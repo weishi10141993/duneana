@@ -1,0 +1,100 @@
+#include "services_dune.fcl"
+#include "ArbitraryAna.fcl"
+
+BEGIN_PROLOG
+
+generator_arbitraryana: {
+   module_type: "ArbitraryAna"
+   GenLabel: "generator"
+}
+END_PROLOG
+
+process_name: ArbitraryAna
+
+services:
+{
+  @table::dunefd_services
+  TFileService:          { fileName: "ArbitraryAna.root" }
+  TimeTracker:           {}
+  MemoryTracker:         {}
+  RandomNumberGenerator: {} #ART native random number generator
+  FileCatalogMetadata:   @local::art_file_catalog_mc
+  Geometry:              @local::dune10kt_1x2x6_geo
+  message:               @local::dune_message_services_prod
+}
+
+physics:
+{
+  analyzers:
+  {
+    arbitraryanafasthit10:    @local::generator_arbitraryana
+    arbitraryanafasthit15:    @local::generator_arbitraryana
+    arbitraryanafasthit20:    @local::generator_arbitraryana
+    arbitraryanafasthit25:    @local::generator_arbitraryana
+    arbitraryanafasthit30:    @local::generator_arbitraryana
+    arbitraryanafasthit35:    @local::generator_arbitraryana
+    arbitraryanafasthit40:    @local::generator_arbitraryana
+
+    arbitraryanagaushit:    @local::generator_arbitraryana
+    
+    arbitraryanatrigprim1000: @local::generator_arbitraryana
+    arbitraryanatrigprim1500: @local::generator_arbitraryana
+    arbitraryanatrigprim1800: @local::generator_arbitraryana
+    arbitraryanatrigprim2000: @local::generator_arbitraryana
+    arbitraryanatrigprim2500: @local::generator_arbitraryana
+    arbitraryanatrigprim3000: @local::generator_arbitraryana
+    arbitraryanatrigprim3500: @local::generator_arbitraryana
+    arbitraryanatrigprim4000: @local::generator_arbitraryana
+  }
+
+  ana: [arbitraryanafasthit10,
+        arbitraryanafasthit15,
+        arbitraryanafasthit20,
+        arbitraryanafasthit25,
+        arbitraryanafasthit30,
+        arbitraryanafasthit35,
+        arbitraryanafasthit40,
+        
+        arbitraryanagaushit,
+        
+        arbitraryanatrigprim1000,
+        arbitraryanatrigprim1500,
+        arbitraryanatrigprim1800,
+        arbitraryanatrigprim2000,
+        arbitraryanatrigprim2500,
+        arbitraryanatrigprim3000,
+        arbitraryanatrigprim3500,
+        arbitraryanatrigprim4000]
+  
+  end_paths: [ ana ] 
+
+}
+
+source:
+{
+  module_type: RootInput
+  maxEvents:   -1
+}
+
+physics.analyzers.arbitraryanatrigprim1000.HitLabel: "trigprim1000"
+physics.analyzers.arbitraryanatrigprim1500.HitLabel: "trigprim1500"
+physics.analyzers.arbitraryanatrigprim1800.HitLabel: "trigprim1800"
+physics.analyzers.arbitraryanatrigprim2000.HitLabel: "trigprim2000"
+physics.analyzers.arbitraryanatrigprim2500.HitLabel: "trigprim2500"
+physics.analyzers.arbitraryanatrigprim3000.HitLabel: "trigprim3000"
+physics.analyzers.arbitraryanatrigprim3500.HitLabel: "trigprim3500"
+physics.analyzers.arbitraryanatrigprim4000.HitLabel: "trigprim4000"
+
+physics.analyzers.arbitraryanagaushit.HitLabel: "gaushit"
+
+physics.analyzers.arbitraryanafasthit10.HitLabel: "fasthit10"
+physics.analyzers.arbitraryanafasthit15.HitLabel: "fasthit15"
+physics.analyzers.arbitraryanafasthit20.HitLabel: "fasthit20"
+physics.analyzers.arbitraryanafasthit25.HitLabel: "fasthit25"
+physics.analyzers.arbitraryanafasthit30.HitLabel: "fasthit30"
+physics.analyzers.arbitraryanafasthit35.HitLabel: "fasthit35"
+physics.analyzers.arbitraryanafasthit40.HitLabel: "fasthit40"
+
+# Shut up the backtracker
+services.message.destinations.LogStandardOut.categories.BackTracker.limit: 0
+services.message.destinations.LogStandardError.categories.BackTracker.limit: 0

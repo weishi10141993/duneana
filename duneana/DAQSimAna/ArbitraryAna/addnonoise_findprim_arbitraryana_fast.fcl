@@ -1,0 +1,6 @@
+#include "addnoise_findprim_arbitraryana_fast.fcl"
+
+services.TFileService.fileName: "ArbitraryAna_plus_trigprim_nonoise.root"
+services.ChannelNoiseService.NoiseNormU: 0
+services.ChannelNoiseService.NoiseNormV: 0
+services.ChannelNoiseService.NoiseNormZ: 0

@@ -1,0 +1,81 @@
+#include "services_dune.fcl"
+#include "hitfindermodules_dune.fcl"
+
+#include "tools_dune.fcl"
+
+process_name: StandardHitFinders
+
+services:
+{
+  TFileService: { fileName: "Gaushit_Fasthit.root" }
+  TimeTracker:       {}
+  MemoryTracker:         { } # default is one
+  RandomNumberGenerator: {} #ART native random number generator
+  NuRandomService:       @local::per_event_NuRandomService  # seedservice.fcl
+  message:              @local::dune_message_services_prod
+  FileCatalogMetadata:  @local::art_file_catalog_mc
+                        @table::dunefd_reco_services
+  Geometry:             @local::dune10kt_1x2x6_geo
+                        
+}
+
+
+source: {
+  module_type: RootInput
+  maxEvents:  -1        # Number of events to create
+}
+
+# Define and configure some modules to do work on each event.
+# First modules are defined; they are scheduled later.
+# Modules are grouped by type.
+
+physics: {
+   producers: {
+      caldata:        @local::producer_adcprep
+      gaushit:        @local::dunefd_gaushitfinder
+      fasthit10:      @local::dunefd_fasthitfinder
+      fasthit15:      @local::dunefd_fasthitfinder
+      fasthit20:      @local::dunefd_fasthitfinder
+      fasthit25:      @local::dunefd_fasthitfinder
+      fasthit30:      @local::dunefd_fasthitfinder
+      fasthit35:      @local::dunefd_fasthitfinder
+      fasthit40:      @local::dunefd_fasthitfinder
+      rns: { module_type: "RandomNumberSaver" }
+   }
+   
+   stream1:  [out1]
+
+   simulate: [rns,
+              caldata,
+              gaushit,
+              fasthit10,
+              fasthit15,
+              fasthit20,
+              fasthit25,
+              fasthit30,
+              fasthit35,
+              fasthit40
+              ]
+   trigger_paths: [simulate] 
+   end_paths: [stream1] 
+
+}
+
+physics.producers.fasthit10.MinSigCol: 10
+physics.producers.fasthit15.MinSigCol: 15
+physics.producers.fasthit20.MinSigCol: 20
+physics.producers.fasthit25.MinSigCol: 25
+physics.producers.fasthit30.MinSigCol: 30
+physics.producers.fasthit35.MinSigCol: 35
+physics.producers.fasthit40.MinSigCol: 40
+
+outputs:
+{
+ out1:
+ {
+   module_type: RootOutput
+   fileName:    "%ifb_reco.root"
+   dataTier:    "reconstructed"
+   compressionLevel: 1
+ }
+}
