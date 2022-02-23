@@ -35,6 +35,8 @@
 #include "larsim/MCCheater/ParticleInventoryService.h"
 #include "larsim/MCCheater/PhotonBackTrackerService.h"
 
+#include "larsim/Utils/TruthMatchUtils.h"
+
 //ART includes
 #include "art/Framework/Core/EDAnalyzer.h"
 #include "art/Framework/Core/ModuleMacros.h"
@@ -172,6 +174,7 @@ private:
   std::vector<float>                Hit_True_Energy          ;
   std::vector<float>                Hit_True_nElec           ;
   std::vector<int>                  Hit_True_nIDEs           ;
+  std::vector<int>                  Hit_True_ID              ;
   std::vector<int>                  Hit_AdjM5SADC            ;
   std::vector<int>                  Hit_AdjM2SADC            ;
   std::vector<int>                  Hit_AdjM1SADC            ;
@@ -247,6 +250,7 @@ private:
   std::vector<double>               True_Bck_EndZ            ;
   std::vector<double>               True_Bck_EndT            ;
   std::vector<double>               True_Bck_EndE            ;   
+  std::vector<double>               True_Bck_Mass            ;   
 
   int   NTotIDEs;
   std::vector<int>                  IDEChannel               ;
@@ -358,6 +362,7 @@ void SNAna::ResetVariables()
   Hit_True_Energy          .clear();
   Hit_True_nElec           .clear();
   Hit_True_nIDEs           .clear();
+  Hit_True_ID              .clear();
 
   Hit_AdjM5SADC            .clear();
   Hit_AdjM2SADC            .clear();
@@ -434,6 +439,7 @@ void SNAna::ResetVariables()
   True_Bck_EndZ            .clear();
   True_Bck_EndT            .clear();
   True_Bck_EndE            .clear();
+  True_Bck_Mass            .clear();
 
   // IDEs
   NTotIDEs=0;
@@ -489,6 +495,7 @@ void SNAna::beginJob()
     fSNAnaTree->Branch("Hit_True_Energy"          , &Hit_True_Energy          );
     fSNAnaTree->Branch("Hit_True_nElec"           , &Hit_True_nElec           );
     fSNAnaTree->Branch("Hit_True_nIDEs"           , &Hit_True_nIDEs           );
+    fSNAnaTree->Branch("Hit_True_ID"              , &Hit_True_ID              );
   }
 
   if (fSaveNeighbourADCs) {
@@ -570,6 +577,7 @@ void SNAna::beginJob()
   fSNAnaTree->Branch("True_Bck_EndZ"            , &True_Bck_EndZ            );
   fSNAnaTree->Branch("True_Bck_EndT"            , &True_Bck_EndT            );
   fSNAnaTree->Branch("True_Bck_EndE"            , &True_Bck_EndE            );  
+  fSNAnaTree->Branch("True_Bck_Mass"            , &True_Bck_Mass            );  
 
   // IDEs
   if(fSaveIDEs) {
@@ -807,28 +815,28 @@ void SNAna::analyze(art::Event const & evt)
     auto rawDigitsVecHandle = evt.getHandle< std::vector<raw::RawDigit> >(fRawDigitLabel);
 
     if ( reco_hits && rawDigitsVecHandle ) {
-      std::vector< recob::Hit > ColHits_Marl;
-      std::vector< recob::Hit > ColHits_CPA ;
-      std::vector< recob::Hit > ColHits_APA ;
-      std::vector< recob::Hit > ColHits_Ar39;
-      std::vector< recob::Hit > ColHits_Neut;
-      std::vector< recob::Hit > ColHits_Kryp;
-      std::vector< recob::Hit > ColHits_Plon;
-      std::vector< recob::Hit > ColHits_Rdon;
-      std::vector< recob::Hit > ColHits_Oth ;
-      std::vector< recob::Hit > ColHits_Ar42;
+      std::vector< recob::Hit > ColHits_Marl; std::vector< recob::Hit > IndHits_Marl;
+      std::vector< recob::Hit > ColHits_CPA ; std::vector< recob::Hit > IndHits_CPA ;
+      std::vector< recob::Hit > ColHits_APA ; std::vector< recob::Hit > IndHits_APA ;
+      std::vector< recob::Hit > ColHits_Ar39; std::vector< recob::Hit > IndHits_Ar39;
+      std::vector< recob::Hit > ColHits_Neut; std::vector< recob::Hit > IndHits_Neut;
+      std::vector< recob::Hit > ColHits_Kryp; std::vector< recob::Hit > IndHits_Kryp;
+      std::vector< recob::Hit > ColHits_Plon; std::vector< recob::Hit > IndHits_Plon;
+      std::vector< recob::Hit > ColHits_Rdon; std::vector< recob::Hit > IndHits_Rdon;
+      std::vector< recob::Hit > ColHits_Oth ; std::vector< recob::Hit > IndHits_Oth ;
+      std::vector< recob::Hit > ColHits_Ar42; std::vector< recob::Hit > IndHits_Ar42;
 
       NTotHit = reco_hits->size();
+      std::vector<art::Ptr<recob::Hit> > hitlist;
+      art::fill_ptr_vector(hitlist, reco_hits);
       int colHitCount(0);
+      int indHitCount(0);
       int LoopHits = NTotHit;
 
       for(int hit = 0; hit < LoopHits; ++hit) {
         recob::Hit const& ThisHit = reco_hits->at(hit);
-        if(ThisHit.View() == geo::kU || ThisHit.View() == geo::kV) {
-          ++NIndHit;
-        } else {
-          ++NColHit;
-        }
+        if(ThisHit.View() == geo::kU || ThisHit.View() == geo::kV) { ++NIndHit; } 
+	else                                                       { ++NColHit; }
       }
 
 
@@ -850,6 +858,7 @@ void SNAna::analyze(art::Event const & evt)
       auto const clockData = art::ServiceHandle<detinfo::DetectorClocksService const>()->DataFor(evt);
       for(int hit = 0; hit < LoopHits; ++hit) {
         recob::Hit const& ThisHit = reco_hits->at(hit);
+	art::Ptr<recob::Hit> const& ThisHitPtr = hitlist.at(hit);
 
         if (ThisHit.View() == 2) {
           std::vector<sim::TrackIDE> ThisHitIDE;
@@ -914,6 +923,7 @@ void SNAna::analyze(art::Event const & evt)
           Hit_Int    .push_back(ThisHit.Integral());
           Hit_Peak   .push_back(ThisHit.PeakAmplitude());
           Hit_True_nIDEs.push_back(ThisHitIDE.size());
+	  Hit_True_ID.push_back(TruthMatchUtils::TrueParticleID(clockData, ThisHitPtr, true));
 
           if(ThisHitIDE.size()==0)
             NHitNoBT++;
@@ -991,18 +1001,163 @@ void SNAna::analyze(art::Event const & evt)
 
           colHitCount++;
         }
+
+	// --- Now for the induction wires
+	if (ThisHit.View() != 2) {
+          std::vector<sim::TrackIDE> ThisHitIDE;
+          //GETTING HOLD OF THE SIM::IDEs.
+
+          std::vector<const sim::IDE*> ThisSimIDE;
+          try {
+            // HitToTrackIDEs opens a specific window around the hit. I want a
+            // wider one, because the filtering can delay the hit. So this bit
+            // is a copy of HitToTrackIDEs from the backtracker, with some
+            // modification
+            const double start = ThisHit.PeakTime()-20;
+            const double end   = ThisHit.PeakTime()+ThisHit.RMS()+20;
+            ThisHitIDE = bt_serv->ChannelToTrackIDEs(clockData, ThisHit.Channel(), start, end);
+
+            // ThisHitIDE = bt_serv->HitToTrackIDEs(clockData,  ThisHit );
+          } catch(...){
+            // std::cout << "FIRST CATCH" << std::endl;
+            firstCatch++;
+            try {
+              ThisSimIDE = bt_serv->HitToSimIDEs_Ps(clockData, ThisHit);
+            } catch(...) {
+	      // std::cout << "SECOND CATCH" << std::endl;
+              secondCatch++;
+              // continue;
+            }
+            // continue;
+          }
+
+          // Get the simIDEs.
+          try {
+            ThisSimIDE = bt_serv->HitToSimIDEs_Ps(clockData, ThisHit);
+          } catch(...) {
+            // std::cout << "THIRD CATCH" << std::endl;
+            thirdCatch++;
+            // continue;
+          }
+
+          Hit_View.push_back(ThisHit.View());
+          Hit_Size.push_back(ThisHit.EndTick() - ThisHit.StartTick());
+          Hit_TPC .push_back(ThisHit.WireID().TPC);
+          int channel = ThisHit.Channel();
+          Hit_Chan.push_back(channel);
+
+          if(fSaveNeighbourADCs)
+            SaveNeighbourADC(channel,rawDigitsVecHandle, badChannels, ThisHit);
+
+          double wire_start[3] = {0,0,0};
+          double wire_end[3] = {0,0,0};
+          auto& wgeo = geo->WireIDToWireGeo(ThisHit.WireID());
+          wgeo.GetStart(wire_start);
+          wgeo.GetEnd(wire_end);
+          Hit_X_start.push_back(wire_start[0]);
+          Hit_Y_start.push_back(wire_start[1]);
+          Hit_Z_start.push_back(wire_start[2]);
+          Hit_X_end  .push_back(wire_end[0]);
+          Hit_Y_end  .push_back(wire_end[1]);
+          Hit_Z_end  .push_back(wire_end[2]);
+          Hit_Time   .push_back(ThisHit.PeakTime());
+          Hit_RMS    .push_back(ThisHit.RMS());
+          Hit_SADC   .push_back(ThisHit.SummedADC());
+          Hit_Int    .push_back(ThisHit.Integral());
+          Hit_Peak   .push_back(ThisHit.PeakAmplitude());
+          Hit_True_nIDEs.push_back(ThisHitIDE.size());
+
+          if(ThisHitIDE.size()==0)
+            NHitNoBT++;
+
+          //WHICH PARTICLE CONTRIBUTED MOST TO THE HIT.
+          double TopEFrac = -DBL_MAX;
+
+          Hit_True_EvEnergy.push_back(0);
+          Hit_True_MainTrID.push_back(-1);
+          for (size_t ideL=0; ideL < ThisHitIDE.size(); ++ideL) {
+            Hit_True_TrackID.push_back(ThisHitIDE[ideL].trackID);
+            for (size_t ipart=0; ipart<allTruthParts.size(); ++ipart) {
+
+              if (allTruthParts[ipart].TrackId() == ThisHitIDE[ideL].trackID) {
+                Hit_True_EvEnergy.at(indHitCount) += allTruthParts[ipart].E();
+              }
+            }
+            if (ThisHitIDE[ideL].energyFrac > TopEFrac) {
+              TopEFrac = ThisHitIDE[ideL].energyFrac;
+              Hit_True_MainTrID.at(indHitCount) = ThisHitIDE[ideL].trackID;
+
+            }
+          }
+
+          PType ThisPType = WhichParType(Hit_True_MainTrID.at(indHitCount));
+          Hit_True_GenType.push_back(ThisPType);
+
+          int thisMarleyIndex=-1;
+          int MainTrID=Hit_True_MainTrID.at(indHitCount);
+          if(ThisPType==kMarl && MainTrID!=0){
+            auto const it=trkIDToMarleyIndex.find(MainTrID);
+            if(it==trkIDToMarleyIndex.end()){
+              mf::LogDebug(fname) << "Track ID " << MainTrID << " is not in Marley index map" << std::endl;
+            }
+            else{
+              thisMarleyIndex=it->second;
+            }
+          }
+          Hit_True_MarleyIndex.push_back(thisMarleyIndex);
+
+          if(Hit_True_MainTrID[indHitCount] == -1)
+	    {
+	      Hit_True_X     .push_back(-1);
+	      Hit_True_Y     .push_back(-1);
+	      Hit_True_Z     .push_back(-1);
+	      Hit_True_Energy.push_back(-1);
+	      Hit_True_nElec .push_back(-1);
+	    }
+          else
+	    {
+	      for(unsigned int i = 0; i < ThisSimIDE.size(); i++)
+		{
+		  if(ThisSimIDE.at(i)->trackID==Hit_True_MainTrID[indHitCount])
+		    {
+		      Hit_True_X     .push_back(ThisSimIDE.at(i)->x           );
+		      Hit_True_Y     .push_back(ThisSimIDE.at(i)->y           );
+		      Hit_True_Z     .push_back(ThisSimIDE.at(i)->z           );
+		      Hit_True_Energy.push_back(ThisSimIDE.at(i)->energy      );
+		      Hit_True_nElec .push_back(ThisSimIDE.at(i)->numElectrons);
+		      break;
+		    }
+		}
+	    }
+
+          if      (ThisPType == 0) { IndHits_Oth .push_back( ThisHit ); }
+          else if (ThisPType == 1) { IndHits_Marl.push_back( ThisHit ); }
+          else if (ThisPType == 2) { IndHits_APA .push_back( ThisHit ); }
+          else if (ThisPType == 3) { IndHits_CPA .push_back( ThisHit ); }
+          else if (ThisPType == 4) { IndHits_Ar39.push_back( ThisHit ); }
+          else if (ThisPType == 5) { IndHits_Neut.push_back( ThisHit ); }
+          else if (ThisPType == 6) { IndHits_Kryp.push_back( ThisHit ); }
+          else if (ThisPType == 7) { IndHits_Plon.push_back( ThisHit ); }
+          else if (ThisPType == 8) { IndHits_Rdon.push_back( ThisHit ); }
+          else if (ThisPType == 9) { IndHits_Ar42.push_back( ThisHit ); }
+
+          indHitCount++;
+        }
+
+
+
       }
       mf::LogInfo(fname) << "Total of:\n"
-                         << " - Other: " << ColHits_Oth.size() << " col plane hits\n"
-                         << " - Marl : " << TotGen_Marl << " true parts\t| " << ColHits_Marl.size() << " col plane hits\n"
-                         << " - APA  : " << TotGen_APA  << " true parts\t| " << ColHits_APA .size() << " col plane hits\n"
-                         << " - CPA  : " << TotGen_CPA  << " true parts\t| " << ColHits_CPA .size() << " col plane hits\n"
-                         << " - Ar39 : " << TotGen_Ar39 << " true parts\t| " << ColHits_Ar39.size() << " col plane hits\n"
-                         << " - Neut : " << TotGen_Neut << " true parts\t| " << ColHits_Neut.size() << " col plane hits\n"
-                         << " - Kryp : " << TotGen_Kryp << " true parts\t| " << ColHits_Kryp.size() << " col plane hits\n"
-                         << " - Plon : " << TotGen_Plon << " true parts\t| " << ColHits_Plon.size() << " col plane hits\n"
-                         << " - Rdon : " << TotGen_Rdon << " true parts\t| " << ColHits_Rdon.size() << " col plane hits\n"
-                         << " - Ar42 : " << TotGen_Ar42 << " true parts\t| " << ColHits_Ar42.size() << " col plane hits\n";
+                         << " - Other: " << ColHits_Oth.size() << " col plane hits\t|" << IndHits_Oth.size() << " ind plane hits\n"
+                         << " - Marl : " << TotGen_Marl << " true parts\t| " << ColHits_Marl.size() << " col plane hits\t|" << IndHits_Marl.size() << " ind plane hits\n"
+                         << " - APA  : " << TotGen_APA  << " true parts\t| " << ColHits_APA .size() << " col plane hits\t|" << IndHits_APA .size() << " ind plane hits\n"
+                         << " - CPA  : " << TotGen_CPA  << " true parts\t| " << ColHits_CPA .size() << " col plane hits\t|" << IndHits_CPA .size() << " ind plane hits\n"
+                         << " - Ar39 : " << TotGen_Ar39 << " true parts\t| " << ColHits_Ar39.size() << " col plane hits\t|" << IndHits_Ar39.size() << " ind plane hits\n"
+                         << " - Neut : " << TotGen_Neut << " true parts\t| " << ColHits_Neut.size() << " col plane hits\t|" << IndHits_Neut.size() << " ind plane hits\n"
+                         << " - Kryp : " << TotGen_Kryp << " true parts\t| " << ColHits_Kryp.size() << " col plane hits\t|" << IndHits_Kryp.size() << " ind plane hits\n"
+                         << " - Plon : " << TotGen_Plon << " true parts\t| " << ColHits_Plon.size() << " col plane hits\t|" << IndHits_Plon.size() << " ind plane hits\n"
+                         << " - Rdon : " << TotGen_Rdon << " true parts\t| " << ColHits_Rdon.size() << " col plane hits\t|" << IndHits_Rdon.size() << " ind plane hits\n"
+                         << " - Ar42 : " << TotGen_Ar42 << " true parts\t| " << ColHits_Ar42.size() << " col plane hits\t|" << IndHits_Ar42.size() << " ind plane hits\n";
     } else {
       mf::LogError(fname) << "Requested to save wire hits, but cannot load any wire hits";
       throw art::Exception(art::errors::NotFound) << "Requested to save wire hits, but cannot load any wire hits\n";
@@ -1125,6 +1280,7 @@ void SNAna::FillTruth(const art::FindManyP<simb::MCParticle> Assn,
       True_Bck_EndE      .push_back(ThisPar.EndE      ());
       True_Bck_EndProcess.push_back(ThisPar.EndProcess());
       True_Bck_Process   .push_back(ThisPar.Process   ());
+      True_Bck_Mass      .push_back(ThisPar.Mass      ());
     }
   }
 }
