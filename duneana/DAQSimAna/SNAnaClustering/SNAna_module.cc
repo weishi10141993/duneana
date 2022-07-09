@@ -55,18 +55,33 @@
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
-enum PType{kUnknown=0, kMarl, kAPA, kCPA, kAr39, kNeut, kKryp, kPlon, kRdon , kAr42};
+enum PType{kUnknown=0, kMarl, kAr39_Lar, kAr42_Lar, kK42_Lar, kKr85_Lar, kRn222_Lar, kPo218_Lar, kPb214_Lar, kBi214_Lar, kPb210_Lar, kK40_CPA, kAr42_CPA, kU238_CPA, kPo218_CPA, kPb214_CPA, kBi214_CPA, kPb210_CPA, kBi210_CPA, kCo60_APA, kU238_APA, kRn222_PDS, kNeut, kCavGam};
 std::map<PType, std::string> PTypeString{
-  {kUnknown,"Unknown"},
-  {kMarl   ,"Marl"   },
-  {kAPA    ,"APA"    },
-  {kCPA    ,"CPA"    },
-  {kAr39   ,"Ar39"   },
-  {kNeut   ,"Neut"   },
-  {kKryp   ,"Kryp"   },
-  {kPlon   ,"Plon"   },
-  {kRdon   ,"Rdon"   },
-  {kAr42   ,"Ar42"   }};
+  {kUnknown  ,"Unknown"  },
+  {kMarl     ,"Marl"     },
+  {kAr39_Lar ,"Ar39_Lar" },
+  {kAr42_Lar ,"Ar42_Lar" },
+  {kK42_Lar  ,"K42_Lar"  },
+  {kKr85_Lar ,"Kr85_Lar" },
+  {kRn222_Lar,"Rn222_Lar"},
+  {kPo218_Lar,"Po218_Lar"},
+  {kPb214_Lar,"Pb214_Lar"},
+  {kBi214_Lar,"Bi214_Lar"},
+  {kPb210_Lar,"Pb210_Lar"},
+  {kK40_CPA  ,"K40_CPA"  },
+  {kAr42_CPA ,"Ar42_CPA" },
+  {kU238_CPA ,"U238_CPA" },
+  {kPo218_CPA,"Po218_CPA"},
+  {kPb214_CPA,"Pb214_CPA"},
+  {kBi214_CPA,"Bi214_CPA"},
+  {kPb210_CPA,"Pb210_CPA"},
+  {kBi210_CPA,"Bi210_CPA"},
+  {kCo60_APA ,"Co60_APA" },
+  {kU238_APA ,"U238_APA" },
+  {kRn222_PDS,"Rn222_PDS"},
+  {kNeut     ,"Neut"     },
+  {kCavGam   ,"CavGam"   }
+};
 
 
 class SNAna : public art::EDAnalyzer {
@@ -114,15 +129,34 @@ private:
   std::string fOpHitModuleLabel;
 
   std::string fGEANTLabel;
-  std::string fMARLLabel ; std::map< int, simb::MCParticle > MarlParts;
-  std::string fAPALabel  ; std::map< int, simb::MCParticle > APAParts ;
-  std::string fCPALabel  ; std::map< int, simb::MCParticle > CPAParts ;
-  std::string fAr39Label ; std::map< int, simb::MCParticle > Ar39Parts;
-  std::string fNeutLabel ; std::map< int, simb::MCParticle > NeutParts;
-  std::string fKrypLabel ; std::map< int, simb::MCParticle > KrypParts;
-  std::string fPlonLabel ; std::map< int, simb::MCParticle > PlonParts;
-  std::string fRdonLabel ; std::map< int, simb::MCParticle > RdonParts;
-  std::string fAr42Label ; std::map< int, simb::MCParticle > Ar42Parts;
+  std::string fMARLLabel      ; std::map< int, simb::MCParticle > MarlParts;
+  std::string fAr39_LarLabel  ; std::map< int, simb::MCParticle > Ar39_LarParts;
+  std::string fAr42_LarLabel  ; std::map< int, simb::MCParticle > Ar42_LarParts;
+  std::string fK42_LarLabel   ; std::map< int, simb::MCParticle > K42_LarParts;
+  std::string fKr85_LarLabel  ; std::map< int, simb::MCParticle > Kr85_LarParts;
+  std::string fRn222_LarLabel ; std::map< int, simb::MCParticle > Rn222_LarParts;
+  std::string fPo218_LarLabel ; std::map< int, simb::MCParticle > Po218_LarParts;
+  std::string fPb214_LarLabel ; std::map< int, simb::MCParticle > Pb214_LarParts;
+  std::string fBi214_LarLabel ; std::map< int, simb::MCParticle > Bi214_LarParts;
+  std::string fPb210_LarLabel ; std::map< int, simb::MCParticle > Pb210_LarParts;
+
+  std::string fK40_CPALabel   ; std::map< int, simb::MCParticle > K40_CPAParts;
+  std::string fAr42_CPALabel  ; std::map< int, simb::MCParticle > Ar42_CPAParts;
+  std::string fU238_CPALabel  ; std::map< int, simb::MCParticle > U238_CPAParts;
+  std::string fPo218_CPALabel ; std::map< int, simb::MCParticle > Po218_CPAParts;
+  std::string fPb214_CPALabel ; std::map< int, simb::MCParticle > Pb214_CPAParts;
+  std::string fBi214_CPALabel ; std::map< int, simb::MCParticle > Bi214_CPAParts;
+  std::string fPb210_CPALabel ; std::map< int, simb::MCParticle > Pb210_CPAParts;
+  std::string fBi210_CPALabel ; std::map< int, simb::MCParticle > Bi210_CPAParts;
+
+  std::string fCo60_APALabel  ; std::map< int, simb::MCParticle > Co60_APAParts;
+  std::string fU238_APALabel  ; std::map< int, simb::MCParticle > U238_APAParts;
+
+  std::string fRn222_PDSLabel ; std::map< int, simb::MCParticle > Rn222_PDSParts;
+
+  std::string fNeutLabel      ; std::map< int, simb::MCParticle > NeutParts;
+  std::string fCavGamLabel    ; std::map< int, simb::MCParticle > CavGamParts;
+
   std::map<int, const simb::MCParticle*> truthmap;
   // Which MARLEY interaction (if any) caused this true track ID?
   std::map<int, int> trkIDToMarleyIndex;
@@ -257,15 +291,30 @@ private:
   std::vector<float>                IDEElectrons             ;
   std::vector<int>                  IDEParticle              ;
 
-  int   TotGen_Marl;
-  int   TotGen_APA ;
-  int   TotGen_CPA ;
-  int   TotGen_Ar39;
-  int   TotGen_Neut;
-  int   TotGen_Kryp;
-  int   TotGen_Plon;
-  int   TotGen_Rdon;
-  int   TotGen_Ar42;
+  int   TotGen_Marl     ;
+  int   TotGen_Ar39_Lar ;
+  int   TotGen_Ar42_Lar ;
+  int   TotGen_K42_Lar  ;
+  int   TotGen_Kr85_Lar ;
+  int   TotGen_Rn222_Lar;
+  int   TotGen_Po218_Lar;
+  int   TotGen_Pb214_Lar;
+  int   TotGen_Bi214_Lar;
+  int   TotGen_Pb210_Lar;
+  int   TotGen_K40_CPA  ;
+  int   TotGen_Ar42_CPA ;
+  int   TotGen_U238_CPA ;
+  int   TotGen_Po218_CPA;
+  int   TotGen_Pb214_CPA;
+  int   TotGen_Bi214_CPA;
+  int   TotGen_Pb210_CPA;
+  int   TotGen_Bi210_CPA;
+  int   TotGen_Co60_APA ;
+  int   TotGen_U238_APA ;
+  int   TotGen_Rn222_PDS;
+  int   TotGen_Neut     ;
+  int   TotGen_CavGam   ;
+
 
 
   art::ServiceHandle<geo::Geometry> geo;
@@ -290,16 +339,31 @@ void SNAna::reconfigure(fhicl::ParameterSet const & p)
   fCalDataModuleLabel = p.get<std::string>("CalDataModuleLabel");
   fOpHitModuleLabel   = p.get<std::string>("OpHitModuleLabel"  );
 
-  fGEANTLabel = p.get<std::string> ("GEANT4Label"  );
-  fMARLLabel  = p.get<std::string> ("MARLEYLabel"  );
-  fAPALabel   = p.get<std::string> ("APALabel"     );
-  fCPALabel   = p.get<std::string> ("CPALabel"     );
-  fAr39Label  = p.get<std::string> ("Argon39Label" );
-  fNeutLabel  = p.get<std::string> ("NeutronLabel" );
-  fKrypLabel  = p.get<std::string> ("KryptonLabel" );
-  fPlonLabel  = p.get<std::string> ("PoloniumLabel");
-  fRdonLabel  = p.get<std::string> ("RadonLabel"   );
-  fAr42Label  = p.get<std::string> ("Argon42Label" );
+  fGEANTLabel     = p.get<std::string> ("GEANT4Label"      );
+  fMARLLabel      = p.get<std::string> ("MARLEYLabel"      );
+  fAr39_LarLabel  = p.get<std::string> ("Argon39_Lar_Label");
+  fAr42_LarLabel  = p.get<std::string> ("Argon42_Lar_Label");
+  fK42_LarLabel   = p.get<std::string> ("Potas42_Lar_Label");
+  fKr85_LarLabel  = p.get<std::string> ("Krypton_Lar_Label");
+  fRn222_LarLabel = p.get<std::string> ("Rado222_Lar_Label");
+  fPo218_LarLabel = p.get<std::string> ("Po218_Lar_Label");
+  fPb214_LarLabel = p.get<std::string> ("Pb214_Lar_Label");
+  fBi214_LarLabel = p.get<std::string> ("Bi214_Lar_Label");
+  fPb210_LarLabel = p.get<std::string> ("Pb210_Lar_Label");
+  fK40_CPALabel   = p.get<std::string> ("Potas40_CPA_Label");
+  fAr42_CPALabel  = p.get<std::string> ("Argon42_CPA_Label");
+  fU238_CPALabel  = p.get<std::string> ("U238Cha_CPA_Label");
+  fPo218_CPALabel = p.get<std::string> ("Po218_CPA_Label");
+  fPb214_CPALabel = p.get<std::string> ("Pb214_CPA_Label");
+  fBi214_CPALabel = p.get<std::string> ("Bi214_CPA_Label");
+  fPb210_CPALabel = p.get<std::string> ("Pb210_CPA_Label");
+  fBi210_CPALabel = p.get<std::string> ("Bi210_CPA_Label");
+  fCo60_APALabel  = p.get<std::string> ("Cobal60_APA_Label");
+  fU238_APALabel  = p.get<std::string> ("U238Cha_APA_Label");
+  fRn222_PDSLabel = p.get<std::string> ("Rado222_PDS_Label");
+  fNeutLabel      = p.get<std::string> ("NeutronLabel"     );
+  fCavGamLabel    = p.get<std::string> ("CavernGammasLabel");
+
 
   fSaveNeighbourADCs = p.get<bool> ("SaveNeighbourADCs",0);
   fSaveTruth = p.get<bool>("SaveTruth",0);
@@ -318,15 +382,21 @@ void SNAna::ResetVariables()
 {
   trkIDToPType.clear();
 
-  MarlParts.clear(); APAParts .clear(); CPAParts .clear(); Ar39Parts.clear();
-  NeutParts.clear(); KrypParts.clear(); PlonParts.clear(); RdonParts.clear();
-  Ar42Parts.clear();
+  MarlParts     .clear(); Ar39_LarParts .clear(); Ar42_LarParts .clear(); K42_LarParts  .clear();
+  Kr85_LarParts .clear(); Rn222_LarParts.clear(); Po218_LarParts.clear(); Pb214_LarParts.clear();
+  Bi214_LarParts.clear(); Pb210_LarParts.clear(); K40_CPAParts  .clear(); Ar42_CPAParts .clear();
+  U238_CPAParts .clear(); Po218_CPAParts.clear(); Pb214_CPAParts.clear(); Bi214_CPAParts.clear();
+  Pb210_CPAParts.clear(); Bi210_CPAParts.clear(); Co60_APAParts .clear(); U238_APAParts .clear();
+  Rn222_PDSParts.clear(); NeutParts     .clear(); CavGamParts   .clear();
 
   Run = SubRun = Event = -1;
 
-  TotGen_Marl = TotGen_APA  = TotGen_CPA  = TotGen_Ar39 = 0;
-  TotGen_Neut = TotGen_Kryp = TotGen_Plon = TotGen_Rdon = 0;
-  TotGen_Ar42 = 0;
+  TotGen_Marl      = TotGen_Ar39_Lar  = TotGen_Ar42_Lar  = TotGen_K42_Lar   = 0;
+  TotGen_Kr85_Lar  = TotGen_Rn222_Lar = TotGen_Po218_Lar = TotGen_Pb214_Lar = 0;
+  TotGen_Bi214_Lar = TotGen_Pb210_Lar = TotGen_K40_CPA   = TotGen_Ar42_CPA  = 0;
+  TotGen_U238_CPA  = TotGen_Po218_CPA = TotGen_Pb214_CPA = TotGen_Bi214_CPA = 0;
+  TotGen_Pb210_CPA = TotGen_Bi210_CPA = TotGen_Co60_APA  = TotGen_U238_APA  = 0;
+  TotGen_Rn222_PDS = TotGen_Neut      = TotGen_CavGam    = 0;
 
   NTotHit    = 0;
   NColHit    = 0;
@@ -583,16 +653,29 @@ void SNAna::beginJob()
     fSNAnaTree->Branch("IDEParticle"              , &IDEParticle              );
   }
 
-  fSNAnaTree->Branch("TotGen_Marl", &TotGen_Marl, "TotGen_Marl/I");
-  fSNAnaTree->Branch("TotGen_APA" , &TotGen_APA , "TotGen_APA/I" );
-  fSNAnaTree->Branch("TotGen_CPA" , &TotGen_CPA , "TotGen_CPA/I" );
-  fSNAnaTree->Branch("TotGen_Ar39", &TotGen_Ar39, "TotGen_Ar39/I");
-  fSNAnaTree->Branch("TotGen_Neut", &TotGen_Neut, "TotGen_Neut/I");
-  fSNAnaTree->Branch("TotGen_Kryp", &TotGen_Kryp, "TotGen_Kryp/I");
-  fSNAnaTree->Branch("TotGen_Plon", &TotGen_Plon, "TotGen_Plon/I");
-  fSNAnaTree->Branch("TotGen_Rdon", &TotGen_Rdon, "TotGen_Rdon/I");
-  fSNAnaTree->Branch("TotGen_Ar42", &TotGen_Ar42, "TotGen_Ar42/I");
-
+  fSNAnaTree->Branch("TotGen_Marl"     , &TotGen_Marl     , "TotGen_Marl/I"     );
+  fSNAnaTree->Branch("TotGen_Ar39_Lar" , &TotGen_Ar39_Lar , "TotGen_Ar39_Lar/I" );
+  fSNAnaTree->Branch("TotGen_Ar42_Lar" , &TotGen_Ar42_Lar , "TotGen_Ar42_Lar/I" );
+  fSNAnaTree->Branch("TotGen_K42_Lar"  , &TotGen_K42_Lar  , "TotGen_K42_Lar/I"  );
+  fSNAnaTree->Branch("TotGen_Kr85_Lar" , &TotGen_Kr85_Lar , "TotGen_Kr85_Lar/I" );
+  fSNAnaTree->Branch("TotGen_Rn222_Lar", &TotGen_Rn222_Lar, "TotGen_Rn222_Lar/I");
+  fSNAnaTree->Branch("TotGen_Po218_Lar", &TotGen_Po218_Lar, "TotGen_Po218_Lar/I");
+  fSNAnaTree->Branch("TotGen_Pb214_Lar", &TotGen_Pb214_Lar, "TotGen_Pb214_Lar/I");
+  fSNAnaTree->Branch("TotGen_Bi214_Lar", &TotGen_Bi214_Lar, "TotGen_Bi214_Lar/I");
+  fSNAnaTree->Branch("TotGen_Pb210_Lar", &TotGen_Pb210_Lar, "TotGen_Pb210_Lar/I");
+  fSNAnaTree->Branch("TotGen_K40_CPA"  , &TotGen_K40_CPA  , "TotGen_K40_CPA/I"  );
+  fSNAnaTree->Branch("TotGen_Ar42_CPA" , &TotGen_Ar42_CPA , "TotGen_Ar42_CPA/I" );
+  fSNAnaTree->Branch("TotGen_U238_CPA" , &TotGen_U238_CPA , "TotGen_U238_CPA/I" );
+  fSNAnaTree->Branch("TotGen_Po218_CPA", &TotGen_Po218_CPA, "TotGen_Po218_CPA/I");
+  fSNAnaTree->Branch("TotGen_Pb214_CPA", &TotGen_Pb214_CPA, "TotGen_Pb214_CPA/I");
+  fSNAnaTree->Branch("TotGen_Bi214_CPA", &TotGen_Bi214_CPA, "TotGen_Bi214_CPA/I");
+  fSNAnaTree->Branch("TotGen_Pb210_CPA", &TotGen_Pb210_CPA, "TotGen_Pb210_CPA/I");
+  fSNAnaTree->Branch("TotGen_Bi210_CPA", &TotGen_Bi210_CPA, "TotGen_Bi210_CPA/I");
+  fSNAnaTree->Branch("TotGen_Co60_APA" , &TotGen_Co60_APA , "TotGen_Co60_APA/I" );
+  fSNAnaTree->Branch("TotGen_U238_APA" , &TotGen_U238_APA , "TotGen_U238_APA/I" );
+  fSNAnaTree->Branch("TotGen_Rn222_PDS", &TotGen_Rn222_PDS, "TotGen_Rn222_PDS/I");
+  fSNAnaTree->Branch("TotGen_Neut"     , &TotGen_Neut     , "TotGen_Neut/I"     );
+  fSNAnaTree->Branch("TotGen_CavGam"   , &TotGen_CavGam   , "TotGen_CavGam/I"   );
 
 }
 
@@ -695,99 +778,253 @@ void SNAna::analyze(art::Event const & evt)
       FillTruth(MarlAssn, MarlTrue, kMarl);
   }
 
-  auto APATrue = evt.getHandle< std::vector<simb::MCTruth> >(fAPALabel);
-  if (APATrue) {
-    art::FindManyP<simb::MCParticle> APAAssn(APATrue,evt,fGEANTLabel);
-    FillMyMaps( APAParts, APAAssn, APATrue );
-    TotGen_APA = APAParts.size();
-    if(fSaveTruth) FillTruth(APAAssn , APATrue , kAPA );
+  auto Ar39_LarTrue = evt.getHandle< std::vector<simb::MCTruth> >(fAr39_LarLabel);
+  if (Ar39_LarTrue) {
+    art::FindManyP<simb::MCParticle> Ar39_LarAssn(Ar39_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Ar39_LarParts, Ar39_LarAssn, Ar39_LarTrue );
+    TotGen_Ar39_Lar = Ar39_LarParts.size();
+    if(fSaveTruth) FillTruth(Ar39_LarAssn , Ar39_LarTrue , kAr39_Lar );
 
   }
 
-  auto CPATrue = evt.getHandle< std::vector<simb::MCTruth> >(fCPALabel);
-  if (CPATrue) {
-    art::FindManyP<simb::MCParticle> CPAAssn(CPATrue,evt,fGEANTLabel);
-    FillMyMaps( CPAParts, CPAAssn, CPATrue );
-    TotGen_CPA = CPAParts.size();
-    if(fSaveTruth) FillTruth(CPAAssn , CPATrue , kCPA );
+  auto Ar42_LarTrue = evt.getHandle< std::vector<simb::MCTruth> >(fAr42_LarLabel);
+  if(Ar42_LarTrue) {
+    art::FindManyP<simb::MCParticle> Ar42_LarAssn(Ar42_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Ar42_LarParts, Ar42_LarAssn, Ar42_LarTrue );
+    TotGen_Ar42_Lar = Ar42_LarParts.size();
+    if(fSaveTruth) FillTruth(Ar42_LarAssn , Ar42_LarTrue , kAr42_Lar );
   }
 
-  auto Ar39True = evt.getHandle< std::vector<simb::MCTruth> >(fAr39Label);
-  if (Ar39True) {
-    art::FindManyP<simb::MCParticle> Ar39Assn(Ar39True,evt,fGEANTLabel);
-    FillMyMaps( Ar39Parts, Ar39Assn, Ar39True );
-    TotGen_Ar39 = Ar39Parts.size();
-    if(fSaveTruth) FillTruth(Ar39Assn, Ar39True, kAr39);
+  auto K42_LarTrue = evt.getHandle< std::vector<simb::MCTruth> > (fK42_LarLabel);
+  if(K42_LarTrue) {
+    art::FindManyP<simb::MCParticle> K42_LarAssn(K42_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( K42_LarParts, K42_LarAssn, K42_LarTrue );
+    TotGen_K42_Lar = K42_LarParts.size();
+    if(fSaveTruth) FillTruth(K42_LarAssn , K42_LarTrue , kK42_Lar );
   }
 
-  auto NeutTrue = evt.getHandle< std::vector<simb::MCTruth> >(fNeutLabel);
-  if (NeutTrue) {
+  auto Kr85_LarTrue = evt.getHandle< std::vector<simb::MCTruth> > (fKr85_LarLabel);
+  if(Kr85_LarTrue) {
+    art::FindManyP<simb::MCParticle> Kr85_LarAssn(Kr85_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Kr85_LarParts, Kr85_LarAssn, Kr85_LarTrue );
+    TotGen_Kr85_Lar = Kr85_LarParts.size();
+    if(fSaveTruth) FillTruth(Kr85_LarAssn , Kr85_LarTrue , kKr85_Lar );
+  }
+
+  auto Rn222_LarTrue = evt.getHandle< std::vector<simb::MCTruth> > (fRn222_LarLabel);
+  if(Rn222_LarTrue) {
+    art::FindManyP<simb::MCParticle> Rn222_LarAssn(Rn222_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Rn222_LarParts, Rn222_LarAssn, Rn222_LarTrue );
+    TotGen_Rn222_Lar = Rn222_LarParts.size();
+    if(fSaveTruth) FillTruth(Rn222_LarAssn , Rn222_LarTrue , kRn222_Lar );
+  }
+
+  auto Po218_LarTrue = evt.getHandle< std::vector<simb::MCTruth> > (fPo218_LarLabel);
+  if(Po218_LarTrue) {
+    art::FindManyP<simb::MCParticle> Po218_LarAssn(Po218_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Po218_LarParts, Po218_LarAssn, Po218_LarTrue );
+    TotGen_Po218_Lar = Po218_LarParts.size();
+    if(fSaveTruth) FillTruth(Po218_LarAssn , Po218_LarTrue , kPo218_Lar );
+  }
+
+  auto Pb214_LarTrue = evt.getHandle< std::vector<simb::MCTruth> > (fPb214_LarLabel);
+  if(Pb214_LarTrue) {
+    art::FindManyP<simb::MCParticle> Pb214_LarAssn(Pb214_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Pb214_LarParts, Pb214_LarAssn, Pb214_LarTrue );
+    TotGen_Pb214_Lar = Pb214_LarParts.size();
+    if(fSaveTruth) FillTruth(Pb214_LarAssn , Pb214_LarTrue , kPb214_Lar );
+  }
+
+  auto Bi214_LarTrue = evt.getHandle< std::vector<simb::MCTruth> > (fBi214_LarLabel);
+  if(Bi214_LarTrue) {
+    art::FindManyP<simb::MCParticle> Bi214_LarAssn(Bi214_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Bi214_LarParts, Bi214_LarAssn, Bi214_LarTrue );
+    TotGen_Bi214_Lar = Bi214_LarParts.size();
+    if(fSaveTruth) FillTruth(Bi214_LarAssn , Bi214_LarTrue , kBi214_Lar );
+  }
+
+  auto Pb210_LarTrue = evt.getHandle< std::vector<simb::MCTruth> > (fPb210_LarLabel);
+  if(Pb210_LarTrue) {
+    art::FindManyP<simb::MCParticle> Pb210_LarAssn(Pb210_LarTrue,evt,fGEANTLabel);
+    FillMyMaps( Pb210_LarParts, Pb210_LarAssn, Pb210_LarTrue );
+    TotGen_Pb210_Lar = Pb210_LarParts.size();
+    if(fSaveTruth) FillTruth(Pb210_LarAssn , Pb210_LarTrue , kPb210_Lar );
+  }
+
+  auto K40_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fK40_CPALabel);
+  if(K40_CPATrue) {
+    art::FindManyP<simb::MCParticle> K40_CPAAssn(K40_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( K40_CPAParts, K40_CPAAssn, K40_CPATrue );
+    TotGen_K40_CPA = K40_CPAParts.size();
+    if(fSaveTruth) FillTruth(K40_CPAAssn , K40_CPATrue , kK40_CPA );
+  }
+
+  auto Ar42_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fAr42_CPALabel);
+  if(Ar42_CPATrue) {
+    art::FindManyP<simb::MCParticle> Ar42_CPAAssn(Ar42_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( Ar42_CPAParts, Ar42_CPAAssn, Ar42_CPATrue );
+    TotGen_Ar42_CPA = Ar42_CPAParts.size();
+    if(fSaveTruth) FillTruth(Ar42_CPAAssn , Ar42_CPATrue , kAr42_CPA );
+  }
+
+  auto U238_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fU238_CPALabel);
+  if(U238_CPATrue) {
+    art::FindManyP<simb::MCParticle> U238_CPAAssn(U238_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( U238_CPAParts, U238_CPAAssn, U238_CPATrue );
+    TotGen_U238_CPA = U238_CPAParts.size();
+    if(fSaveTruth) FillTruth(U238_CPAAssn , U238_CPATrue , kU238_CPA );
+  }
+
+  auto Po218_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fPo218_CPALabel);
+  if(Po218_CPATrue) {
+    art::FindManyP<simb::MCParticle> Po218_CPAAssn(Po218_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( Po218_CPAParts, Po218_CPAAssn, Po218_CPATrue );
+    TotGen_Po218_CPA = Po218_CPAParts.size();
+    if(fSaveTruth) FillTruth(Po218_CPAAssn , Po218_CPATrue , kPo218_CPA );
+  }
+
+  auto Pb214_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fPb214_CPALabel);
+  if(Pb214_CPATrue) {
+    art::FindManyP<simb::MCParticle> Pb214_CPAAssn(Pb214_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( Pb214_CPAParts, Pb214_CPAAssn, Pb214_CPATrue );
+    TotGen_Pb214_CPA = Pb214_CPAParts.size();
+    if(fSaveTruth) FillTruth(Pb214_CPAAssn , Pb214_CPATrue , kPb214_CPA );
+  }
+
+  auto Bi214_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fBi214_CPALabel);
+  if(Bi214_CPATrue) {
+    art::FindManyP<simb::MCParticle> Bi214_CPAAssn(Bi214_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( Bi214_CPAParts, Bi214_CPAAssn, Bi214_CPATrue );
+    TotGen_Bi214_CPA = Bi214_CPAParts.size();
+    if(fSaveTruth) FillTruth(Bi214_CPAAssn , Bi214_CPATrue , kBi214_CPA );
+  }
+
+  auto Pb210_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fPb210_CPALabel);
+  if(Pb210_CPATrue) {
+    art::FindManyP<simb::MCParticle> Pb210_CPAAssn(Pb210_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( Pb210_CPAParts, Pb210_CPAAssn, Pb210_CPATrue );
+    TotGen_Pb210_CPA = Pb210_CPAParts.size();
+    if(fSaveTruth) FillTruth(Pb210_CPAAssn , Pb210_CPATrue , kPb210_CPA );
+  }
+
+  auto Bi210_CPATrue = evt.getHandle< std::vector<simb::MCTruth> > (fBi210_CPALabel);
+  if(Bi210_CPATrue) {
+    art::FindManyP<simb::MCParticle> Bi210_CPAAssn(Bi210_CPATrue,evt,fGEANTLabel);
+    FillMyMaps( Bi210_CPAParts, Bi210_CPAAssn, Bi210_CPATrue );
+    TotGen_Bi210_CPA = Bi210_CPAParts.size();
+    if(fSaveTruth) FillTruth(Bi210_CPAAssn , Bi210_CPATrue , kBi210_CPA );
+  }
+
+  auto Co60_APATrue = evt.getHandle< std::vector<simb::MCTruth> > (fCo60_APALabel);
+  if(Co60_APATrue) {
+    art::FindManyP<simb::MCParticle> Co60_APAAssn(Co60_APATrue,evt,fGEANTLabel);
+    FillMyMaps( Co60_APAParts, Co60_APAAssn, Co60_APATrue );
+    TotGen_Co60_APA = Co60_APAParts.size();
+    if(fSaveTruth) FillTruth(Co60_APAAssn , Co60_APATrue , kCo60_APA );
+  }
+
+  auto U238_APATrue = evt.getHandle< std::vector<simb::MCTruth> > (fU238_APALabel);
+  if(U238_APATrue) {
+    art::FindManyP<simb::MCParticle> U238_APAAssn(U238_APATrue,evt,fGEANTLabel);
+    FillMyMaps( U238_APAParts, U238_APAAssn, U238_APATrue );
+    TotGen_U238_APA = U238_APAParts.size();
+    if(fSaveTruth) FillTruth(U238_APAAssn , U238_APATrue , kU238_APA );
+  }
+
+  auto Rn222_PDSTrue = evt.getHandle< std::vector<simb::MCTruth> > (fRn222_PDSLabel);
+  if(Rn222_PDSTrue) {
+    art::FindManyP<simb::MCParticle> Rn222_PDSAssn(Rn222_PDSTrue,evt,fGEANTLabel);
+    FillMyMaps( Rn222_PDSParts, Rn222_PDSAssn, Rn222_PDSTrue );
+    TotGen_Rn222_PDS = Rn222_PDSParts.size();
+    if(fSaveTruth) FillTruth(Rn222_PDSAssn , Rn222_PDSTrue , kRn222_PDS );
+  }
+
+  auto NeutTrue = evt.getHandle< std::vector<simb::MCTruth> > (fNeutLabel);
+  if(NeutTrue) {
     art::FindManyP<simb::MCParticle> NeutAssn(NeutTrue,evt,fGEANTLabel);
     FillMyMaps( NeutParts, NeutAssn, NeutTrue );
     TotGen_Neut = NeutParts.size();
-    if(fSaveTruth) FillTruth(NeutAssn, NeutTrue, kNeut);
+    if(fSaveTruth) FillTruth(NeutAssn , NeutTrue , kNeut );
   }
 
-  auto KrypTrue = evt.getHandle< std::vector<simb::MCTruth> >(fKrypLabel);
-  if (KrypTrue) {
-    art::FindManyP<simb::MCParticle> KrypAssn(KrypTrue,evt,fGEANTLabel);
-    FillMyMaps( KrypParts, KrypAssn, KrypTrue );
-    TotGen_Kryp = KrypParts.size();
-    if(fSaveTruth) FillTruth(KrypAssn, KrypTrue, kKryp);
-  }
-
-  auto PlonTrue = evt.getHandle< std::vector<simb::MCTruth> >(fPlonLabel);
-  if (PlonTrue) {
-    art::FindManyP<simb::MCParticle> PlonAssn(PlonTrue,evt,fGEANTLabel);
-    FillMyMaps( PlonParts, PlonAssn, PlonTrue );
-    TotGen_Plon = PlonParts.size();
-    if(fSaveTruth) FillTruth(PlonAssn, PlonTrue, kPlon);
-  }
-
-  auto RdonTrue = evt.getHandle< std::vector<simb::MCTruth> >(fRdonLabel);
-  if (RdonTrue) {
-    art::FindManyP<simb::MCParticle> RdonAssn(RdonTrue,evt,fGEANTLabel);
-    FillMyMaps( RdonParts, RdonAssn, RdonTrue );
-    TotGen_Rdon = RdonParts.size();
-    if(fSaveTruth) FillTruth(RdonAssn, RdonTrue, kRdon);
-  }
-
-  auto Ar42True = evt.getHandle< std::vector<simb::MCTruth> >(fAr42Label);
-  if (Ar42True) {
-    art::FindManyP<simb::MCParticle> Ar42Assn(Ar42True,evt,fGEANTLabel);
-    FillMyMaps( Ar42Parts, Ar42Assn, Ar42True );
-    TotGen_Ar42 = Ar42Parts.size();
-    if(fSaveTruth) FillTruth(Ar42Assn, Ar42True, kAr42);
+  auto CavGamTrue = evt.getHandle< std::vector<simb::MCTruth> > (fCavGamLabel);
+  if(CavGamTrue) {
+    art::FindManyP<simb::MCParticle> CavGamAssn(CavGamTrue,evt,fGEANTLabel);
+    FillMyMaps( CavGamParts, CavGamAssn, CavGamTrue );
+    TotGen_CavGam = CavGamParts.size();
+    if(fSaveTruth) FillTruth(CavGamAssn , CavGamTrue , kCavGam );
   }
 
   std::vector<simb::MCParticle> allTruthParts;
-  for(auto& it: APAParts)
+  for(auto& it: Ar39_LarParts)
     allTruthParts.push_back(it.second);
-  for(auto& it: CPAParts)
+  for(auto& it: Ar42_LarParts)
     allTruthParts.push_back(it.second);
-  for(auto& it: Ar39Parts)
+  for(auto& it: K42_LarParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Kr85_LarParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Rn222_LarParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Po218_LarParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Pb214_LarParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Bi214_LarParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Pb210_LarParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: K40_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Ar42_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: U238_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Po218_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Pb214_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Bi214_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Pb210_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Bi210_CPAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Co60_APAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: U238_APAParts)
+    allTruthParts.push_back(it.second);
+  for(auto& it: Rn222_PDSParts)
     allTruthParts.push_back(it.second);
   for(auto& it: NeutParts)
     allTruthParts.push_back(it.second);
-  for(auto& it: KrypParts)
-    allTruthParts.push_back(it.second);
-  for(auto& it: PlonParts)
-    allTruthParts.push_back(it.second);
-  for(auto& it: RdonParts)
-    allTruthParts.push_back(it.second);
-  for(auto& it: Ar42Parts)
+  for(auto& it: CavGamParts)
     allTruthParts.push_back(it.second);
 
   std::map<PType, std::map< int, simb::MCParticle >&> PTypeToMap{
-    {kMarl, MarlParts},
-    {kAPA,  APAParts },
-    {kCPA,  CPAParts },
-    {kAr39, Ar39Parts},
-    {kAr42, Ar42Parts},
-    {kNeut, NeutParts},
-    {kKryp, KrypParts},
-    {kPlon, PlonParts},
-    {kRdon, RdonParts}
+    {kMarl,      MarlParts     },
+    {kAr39_Lar,  Ar39_LarParts },
+    {kAr42_Lar,  Ar42_LarParts },
+    {kK42_Lar,   K42_LarParts  },
+    {kKr85_Lar,  Kr85_LarParts },
+    {kRn222_Lar, Rn222_LarParts},
+    {kPo218_Lar, Po218_LarParts},
+    {kPb214_Lar, Pb214_LarParts},
+    {kBi214_Lar, Bi214_LarParts},
+    {kPb210_Lar, Pb210_LarParts},
+    {kK40_CPA,   K40_CPAParts  },
+    {kAr42_CPA,  Ar42_CPAParts },
+    {kU238_CPA,  U238_CPAParts },
+    {kPo218_CPA, Po218_CPAParts},
+    {kPb214_CPA, Pb214_CPAParts},
+    {kBi214_CPA, Bi214_CPAParts},
+    {kPb210_CPA, Pb210_CPAParts},
+    {kBi210_CPA, Bi210_CPAParts},
+    {kCo60_APA,  Co60_APAParts },
+    {kU238_APA,  U238_APAParts },
+    {kRn222_PDS, Rn222_PDSParts},
+    {kNeut,      NeutParts     },
+    {kCavGam,    CavGamParts   }
   };
 
   std::map<PType,std::set<int>> PTypeToTrackID;
@@ -806,18 +1043,31 @@ void SNAna::analyze(art::Event const & evt)
   if (fSaveTPC) {
     auto reco_hits = evt.getHandle< std::vector<recob::Hit> >(fHitLabel);
     auto rawDigitsVecHandle = evt.getHandle< std::vector<raw::RawDigit> >(fRawDigitLabel);
-
     if ( reco_hits && rawDigitsVecHandle ) {
-      std::vector< recob::Hit > ColHits_Marl;
-      std::vector< recob::Hit > ColHits_CPA ;
-      std::vector< recob::Hit > ColHits_APA ;
-      std::vector< recob::Hit > ColHits_Ar39;
-      std::vector< recob::Hit > ColHits_Neut;
-      std::vector< recob::Hit > ColHits_Kryp;
-      std::vector< recob::Hit > ColHits_Plon;
-      std::vector< recob::Hit > ColHits_Rdon;
-      std::vector< recob::Hit > ColHits_Oth ;
-      std::vector< recob::Hit > ColHits_Ar42;
+      std::vector< recob::Hit > ColHits_Oth      ;
+      std::vector< recob::Hit > ColHits_Marl     ;
+      std::vector< recob::Hit > ColHits_Ar39_Lar ;
+      std::vector< recob::Hit > ColHits_Ar42_Lar ;
+      std::vector< recob::Hit > ColHits_K42_Lar  ;
+      std::vector< recob::Hit > ColHits_Kr85_Lar ;
+      std::vector< recob::Hit > ColHits_Rn222_Lar;
+      std::vector< recob::Hit > ColHits_Po218_Lar;
+      std::vector< recob::Hit > ColHits_Pb214_Lar;
+      std::vector< recob::Hit > ColHits_Bi214_Lar;
+      std::vector< recob::Hit > ColHits_Pb210_Lar;
+      std::vector< recob::Hit > ColHits_K40_CPA  ;
+      std::vector< recob::Hit > ColHits_Ar42_CPA ;
+      std::vector< recob::Hit > ColHits_U238_CPA ;
+      std::vector< recob::Hit > ColHits_Po218_CPA;
+      std::vector< recob::Hit > ColHits_Pb214_CPA;
+      std::vector< recob::Hit > ColHits_Bi214_CPA;
+      std::vector< recob::Hit > ColHits_Pb210_CPA;
+      std::vector< recob::Hit > ColHits_Bi210_CPA;
+      std::vector< recob::Hit > ColHits_Co60_APA ;
+      std::vector< recob::Hit > ColHits_U238_APA ;
+      std::vector< recob::Hit > ColHits_Rn222_PDS;
+      std::vector< recob::Hit > ColHits_Neut     ;
+      std::vector< recob::Hit > ColHits_CavGam   ;
 
       NTotHit = reco_hits->size();
       int colHitCount(0);
@@ -979,31 +1229,60 @@ void SNAna::analyze(art::Event const & evt)
             }
           }
 
-          if      (ThisPType == 0) { ColHits_Oth .push_back( ThisHit ); }
-          else if (ThisPType == 1) { ColHits_Marl.push_back( ThisHit ); }
-          else if (ThisPType == 2) { ColHits_APA .push_back( ThisHit ); }
-          else if (ThisPType == 3) { ColHits_CPA .push_back( ThisHit ); }
-          else if (ThisPType == 4) { ColHits_Ar39.push_back( ThisHit ); }
-          else if (ThisPType == 5) { ColHits_Neut.push_back( ThisHit ); }
-          else if (ThisPType == 6) { ColHits_Kryp.push_back( ThisHit ); }
-          else if (ThisPType == 7) { ColHits_Plon.push_back( ThisHit ); }
-          else if (ThisPType == 8) { ColHits_Rdon.push_back( ThisHit ); }
-          else if (ThisPType == 9) { ColHits_Ar42.push_back( ThisHit ); }
+          if      (ThisPType == 0)  { ColHits_Oth      .push_back( ThisHit ); }
+          else if (ThisPType == 1)  { ColHits_Marl     .push_back( ThisHit ); }
+          else if (ThisPType == 2)  { ColHits_Ar39_Lar .push_back( ThisHit ); }
+          else if (ThisPType == 3)  { ColHits_Ar42_Lar .push_back( ThisHit ); }
+          else if (ThisPType == 4)  { ColHits_K42_Lar  .push_back( ThisHit ); }
+          else if (ThisPType == 5)  { ColHits_Kr85_Lar .push_back( ThisHit ); }
+          else if (ThisPType == 6)  { ColHits_Rn222_Lar.push_back( ThisHit ); }
+          else if (ThisPType == 7)  { ColHits_Po218_Lar.push_back( ThisHit ); }
+          else if (ThisPType == 8)  { ColHits_Pb214_Lar.push_back( ThisHit ); }
+          else if (ThisPType == 9)  { ColHits_Bi214_Lar.push_back( ThisHit ); }
+          else if (ThisPType == 10) { ColHits_Pb210_Lar.push_back( ThisHit ); }
+          else if (ThisPType == 11) { ColHits_K40_CPA  .push_back( ThisHit ); }
+          else if (ThisPType == 12) { ColHits_Ar42_CPA .push_back( ThisHit ); }
+          else if (ThisPType == 13) { ColHits_U238_CPA .push_back( ThisHit ); }
+          else if (ThisPType == 14) { ColHits_Po218_CPA.push_back( ThisHit ); }
+          else if (ThisPType == 15) { ColHits_Pb214_CPA.push_back( ThisHit ); }
+          else if (ThisPType == 16) { ColHits_Bi214_CPA.push_back( ThisHit ); }
+          else if (ThisPType == 17) { ColHits_Pb210_CPA.push_back( ThisHit ); }
+          else if (ThisPType == 18) { ColHits_Bi210_CPA.push_back( ThisHit ); }
+          else if (ThisPType == 19) { ColHits_Co60_APA .push_back( ThisHit ); }
+          else if (ThisPType == 20) { ColHits_U238_APA .push_back( ThisHit ); }
+          else if (ThisPType == 21) { ColHits_Rn222_PDS.push_back( ThisHit ); }
+          else if (ThisPType == 22) { ColHits_Neut     .push_back( ThisHit ); }
+          else if (ThisPType == 23) { ColHits_CavGam   .push_back( ThisHit ); }
 
           colHitCount++;
         }
       }
       mf::LogInfo(fname) << "Total of:\n"
-                         << " - Other: " << ColHits_Oth.size() << " col plane hits\n"
-                         << " - Marl : " << TotGen_Marl << " true parts\t| " << ColHits_Marl.size() << " col plane hits\n"
-                         << " - APA  : " << TotGen_APA  << " true parts\t| " << ColHits_APA .size() << " col plane hits\n"
-                         << " - CPA  : " << TotGen_CPA  << " true parts\t| " << ColHits_CPA .size() << " col plane hits\n"
-                         << " - Ar39 : " << TotGen_Ar39 << " true parts\t| " << ColHits_Ar39.size() << " col plane hits\n"
-                         << " - Neut : " << TotGen_Neut << " true parts\t| " << ColHits_Neut.size() << " col plane hits\n"
-                         << " - Kryp : " << TotGen_Kryp << " true parts\t| " << ColHits_Kryp.size() << " col plane hits\n"
-                         << " - Plon : " << TotGen_Plon << " true parts\t| " << ColHits_Plon.size() << " col plane hits\n"
-                         << " - Rdon : " << TotGen_Rdon << " true parts\t| " << ColHits_Rdon.size() << " col plane hits\n"
-                         << " - Ar42 : " << TotGen_Ar42 << " true parts\t| " << ColHits_Ar42.size() << " col plane hits\n";
+                         << " - Other    : " << ColHits_Oth.size() << " col plane hits\n"
+                         << " - Marl     : " << TotGen_Marl        << " true parts\t| " << ColHits_Marl     .size() << " col plane hits\n"
+                         << " - Ar39_Lar : " << TotGen_Ar39_Lar    << " true parts\t| " << ColHits_Ar39_Lar .size() << " col plane hits\n"
+                         << " - Ar42_Lar : " << TotGen_Ar42_Lar    << " true parts\t| " << ColHits_Ar42_Lar .size() << " col plane hits\n"
+                         << " - K42_Lar  : " << TotGen_K42_Lar     << " true parts\t| " << ColHits_K42_Lar  .size() << " col plane hits\n"
+                         << " - Kr85_Lar : " << TotGen_Kr85_Lar    << " true parts\t| " << ColHits_Kr85_Lar .size() << " col plane hits\n"
+                         << " - Rn222_Lar: " << TotGen_Rn222_Lar   << " true parts\t| " << ColHits_Rn222_Lar.size() << " col plane hits\n"
+                         << " - Po218_Lar: " << TotGen_Po218_Lar   << " true parts\t| " << ColHits_Po218_Lar.size() << " col plane hits\n"
+                         << " - Pb214_Lar: " << TotGen_Pb214_Lar   << " true parts\t| " << ColHits_Pb214_Lar.size() << " col plane hits\n"
+                         << " - Bi214_Lar: " << TotGen_Bi214_Lar   << " true parts\t| " << ColHits_Bi214_Lar.size() << " col plane hits\n"
+                         << " - Pb210_Lar: " << TotGen_Pb210_Lar   << " true parts\t| " << ColHits_Pb210_Lar.size() << " col plane hits\n"
+                         << " - K40_CPA  : " << TotGen_K40_CPA     << " true parts\t| " << ColHits_K40_CPA  .size() << " col plane hits\n"
+                         << " - Ar42_CPA : " << TotGen_Ar42_CPA    << " true parts\t| " << ColHits_Ar42_CPA .size() << " col plane hits\n"
+                         << " - U238_CPA : " << TotGen_U238_CPA    << " true parts\t| " << ColHits_U238_CPA .size() << " col plane hits\n"
+                         << " - Po218_CPA: " << TotGen_Po218_CPA   << " true parts\t| " << ColHits_Po218_CPA.size() << " col plane hits\n"
+                         << " - Pb214_CPA: " << TotGen_Pb214_CPA   << " true parts\t| " << ColHits_Pb214_CPA.size() << " col plane hits\n"
+                         << " - Bi214_CPA: " << TotGen_Bi214_CPA   << " true parts\t| " << ColHits_Bi214_CPA.size() << " col plane hits\n"
+                         << " - Pb210_CPA: " << TotGen_Pb210_CPA   << " true parts\t| " << ColHits_Pb210_CPA.size() << " col plane hits\n"
+                         << " - Bi210_CPA: " << TotGen_Bi210_CPA   << " true parts\t| " << ColHits_Bi210_CPA.size() << " col plane hits\n"
+                         << " - Co60_APA : " << TotGen_Co60_APA    << " true parts\t| " << ColHits_Co60_APA .size() << " col plane hits\n"
+                         << " - U238_APA : " << TotGen_U238_APA    << " true parts\t| " << ColHits_U238_APA .size() << " col plane hits\n"
+                         << " - Rn222_PDS: " << TotGen_Rn222_PDS   << " true parts\t| " << ColHits_Rn222_PDS.size() << " col plane hits\n"
+                         << " - Neut     : " << TotGen_Neut        << " true parts\t| " << ColHits_Neut     .size() << " col plane hits\n"
+                         << " - CavGam   : " << TotGen_CavGam      << " true parts\t| " << ColHits_CavGam   .size() << " col plane hits\n";
+
     } else {
       mf::LogError(fname) << "Requested to save wire hits, but cannot load any wire hits";
       throw art::Exception(art::errors::NotFound) << "Requested to save wire hits, but cannot load any wire hits\n";
@@ -1012,10 +1291,10 @@ void SNAna::analyze(art::Event const & evt)
 
   if (fSavePDS) {
 
+    auto OpHitHandle = evt.getHandle< std::vector< recob::OpHit > >(fOpHitModuleLabel);
     std::vector<art::Ptr<recob::OpHit> > ophitlist;
     std::map<PType, std::vector<art::Ptr<recob::OpHit> > > map_of_ophit;
 
-    auto OpHitHandle = evt.getHandle< std::vector< recob::OpHit > >(fOpHitModuleLabel);
     if (OpHitHandle) {
       art::fill_ptr_vector(ophitlist, OpHitHandle);
 
@@ -1079,16 +1358,31 @@ void SNAna::analyze(art::Event const & evt)
         PDS_OpHit_FastToTotal .push_back(ophitlist[i]->FastToTotal());
       }
       mf::LogInfo(fname) << "Total of :\n"
-                         << " - Other: " << map_of_ophit[kUnknown].size() << " opt hits\n" 
-                         << " - Marl : " << TotGen_Marl << " true parts\t| " << map_of_ophit[kMarl].size() << " opt hits\n"
-                         << " - APA  : " << TotGen_APA  << " true parts\t| " << map_of_ophit[kAPA] .size() << " opt hits\n"
-                         << " - CPA  : " << TotGen_CPA  << " true parts\t| " << map_of_ophit[kCPA] .size() << " opt hits\n"
-                         << " - Ar39 : " << TotGen_Ar39 << " true parts\t| " << map_of_ophit[kAr39].size() << " opt hits\n"
-                         << " - Neut : " << TotGen_Neut << " true parts\t| " << map_of_ophit[kNeut].size() << " opt hits\n"
-                         << " - Kryp : " << TotGen_Kryp << " true parts\t| " << map_of_ophit[kKryp].size() << " opt hits\n"
-                         << " - Plon : " << TotGen_Plon << " true parts\t| " << map_of_ophit[kPlon].size() << " opt hits\n"
-                         << " - Rdon : " << TotGen_Rdon << " true parts\t| " << map_of_ophit[kRdon].size() << " opt hits\n"
-                         << " - Ar42 : " << TotGen_Ar42 << " true parts\t| " << map_of_ophit[kAr42].size() << " opt hits\n";
+                         << " - Other    : " << map_of_ophit[kUnknown].size() << " opt hits\n"
+                         << " - Marl     : " << TotGen_Marl      << " true parts\t| " << map_of_ophit[kMarl]     .size() << " opt hits\n"
+                         << " - Ar39_Lar : " << TotGen_Ar39_Lar  << " true parts\t| " << map_of_ophit[kAr39_Lar] .size() << " opt hits\n"
+                         << " - Ar42_Lar : " << TotGen_Ar42_Lar  << " true parts\t| " << map_of_ophit[kAr42_Lar] .size() << " opt hits\n"
+                         << " - K42_Lar  : " << TotGen_K42_Lar   << " true parts\t| " << map_of_ophit[kK42_Lar]  .size() << " opt hits\n"
+                         << " - Kr85_Lar : " << TotGen_Kr85_Lar  << " true parts\t| " << map_of_ophit[kKr85_Lar] .size() << " opt hits\n"
+                         << " - Rn222_Lar: " << TotGen_Rn222_Lar << " true parts\t| " << map_of_ophit[kRn222_Lar].size() << " opt hits\n"
+                         << " - Po218_Lar: " << TotGen_Po218_Lar << " true parts\t| " << map_of_ophit[kPo218_Lar].size() << " opt hits\n"
+                         << " - Pb214_Lar: " << TotGen_Pb214_Lar << " true parts\t| " << map_of_ophit[kPb214_Lar].size() << " opt hits\n"
+                         << " - Bi214_Lar: " << TotGen_Bi214_Lar << " true parts\t| " << map_of_ophit[kBi214_Lar].size() << " opt hits\n"
+                         << " - Pb210_Lar: " << TotGen_Pb210_Lar << " true parts\t| " << map_of_ophit[kPb210_Lar].size() << " opt hits\n"
+                         << " - K40_CPA  : " << TotGen_K40_CPA   << " true parts\t| " << map_of_ophit[kK40_CPA]  .size() << " opt hits\n"
+                         << " - Ar42_CPA : " << TotGen_Ar42_CPA  << " true parts\t| " << map_of_ophit[kAr42_CPA] .size() << " opt hits\n"
+                         << " - U238_CPA : " << TotGen_U238_CPA  << " true parts\t| " << map_of_ophit[kU238_CPA] .size() << " opt hits\n"
+                         << " - Po218_CPA: " << TotGen_Po218_CPA << " true parts\t| " << map_of_ophit[kPo218_CPA] .size() << " opt hits\n"
+                         << " - Pb214_CPA: " << TotGen_Pb214_CPA << " true parts\t| " << map_of_ophit[kPb214_CPA] .size() << " opt hits\n"
+                         << " - Bi214_CPA: " << TotGen_Bi214_CPA << " true parts\t| " << map_of_ophit[kBi214_CPA] .size() << " opt hits\n"
+                         << " - Pb210_CPA: " << TotGen_Pb210_CPA << " true parts\t| " << map_of_ophit[kPb210_CPA] .size() << " opt hits\n"
+                         << " - Bi210_CPA: " << TotGen_Bi210_CPA << " true parts\t| " << map_of_ophit[kBi210_CPA] .size() << " opt hits\n"
+                         << " - Co60_APA : " << TotGen_Co60_APA  << " true parts\t| " << map_of_ophit[kCo60_APA] .size() << " opt hits\n"
+                         << " - U238_APA : " << TotGen_U238_APA  << " true parts\t| " << map_of_ophit[kU238_APA] .size() << " opt hits\n"
+                         << " - Rn222_PDS: " << TotGen_Rn222_PDS << " true parts\t| " << map_of_ophit[kRn222_PDS].size() << " opt hits\n"
+                         << " - Neut     : " << TotGen_Neut      << " true parts\t| " << map_of_ophit[kNeut]     .size() << " opt hits\n"
+                         << " - CavGam   : " << TotGen_CavGam    << " true parts\t| " << map_of_ophit[kCavGam]   .size() << " opt hits\n";
+
     }
     else {
       mf::LogError(fname) << "Requested to save optical hits, but cannot load any ophits";

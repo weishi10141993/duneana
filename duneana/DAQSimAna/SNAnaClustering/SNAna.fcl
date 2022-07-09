@@ -13,19 +13,37 @@ standard_snana:
   SaveTruth:            false # save all the generated particle
   SaveIDEs:             false
   SaveTPC:              true
-  SavePDS:              true
+  SavePDS:              false
 
+  GEANT4Label:        "largeant"                # The label for the process which ran GEANT4
+  MARLEYLabel:        "marley"                  # The label for the process which produced MARLEY events
 
-  GEANT4Label:   "largeant"    # The label for the process which ran GEANT4
-  MARLEYLabel:   "marley"      # The label for the process which produced MARLEY events
-  APALabel:      "apaGen"      # The label for the process which produced APA events
-  CPALabel:      "cpaGen"      # The label for the process which produced CPA events
-  Argon39Label:  "ar39Gen"     # The label for the process which produced Argon 39 events
-  NeutronLabel:  "cNeutronGen" # The label for the process which produced Neutron events
-  KryptonLabel:  "kr85Gen"     # The label for the process which produced Krypton events
-  PoloniumLabel: "po210Gen"    # The label for the process which produced Polonium events
-  RadonLabel:    "rn222Gen"    # The label for the process which produced Radon events
-  Argon42Label:  "ar42Gen"     # The label for the process which produced Argon 42 events
+  Argon39_Lar_Label:  "Ar39GenInLAr"            # The label for the process which produced Argon 39 events
+  Krypton_Lar_Label:  "Kr85GenInLAr"            # The label for the process which produced Krypton events
+  Argon42_Lar_Label:  "Ar42GenInLAr"            # The label for the process which produced Argon 42 events
+  Potas42_Lar_Label:  "K42From42ArGenInLAr"     # 
+  Rado222_Lar_Label:  "Rn222ChainGenInLAr"      # 
+Po218_Lar_Label:    "Rn222ChainPo218GenInLAr" #
+Pb214_Lar_Label:    "Rn222ChainPb214GenInLAr" #
+Bi214_Lar_Label:    "Rn222ChainBi214GenInLAr" #
+Pb210_Lar_Label:    "Rn222ChainPb210GenInLAr" #
+
+  Potas40_CPA_Label:  "K40inGenInCPA"           # The label for the process which produced CPA events
+  U238Cha_CPA_Label:  "U238ChainGenInCPA"       # 
+  Argon42_CPA_Label:  "K42From42ArGenInCPA"     # 
+Po218_CPA_Label:    "Rn222ChainPo218GenInCPA"
+Pb214_CPA_Label:    "Rn222ChainPb214GenInCPA"
+Bi214_CPA_Label:    "Rn222ChainBi214GenInCPA"    
+Pb210_CPA_Label:    "Rn222ChainPb210GenInCPA"
+Bi210_CPA_Label:    "Rn222ChainFromBi210GenInCPA"
+
+  Cobal60_APA_Label:  "Co60inGenInAPA"          # The label for the process which produced APA events
+  U238Cha_APA_Label:  "U238ChainGenInAPA"       # 
+
+  Rado222_PDS_Label:  "Rn222ChainGenInPDS"      #
+
+  NeutronLabel:       "NeutronGenInRock"        # The label for the process which produced Neutron events
+  CavernGammasLabel:  "GammasGenInRock"		# The label for the process which produced Gammas from rock events
 }
 
 END_PROLOG
