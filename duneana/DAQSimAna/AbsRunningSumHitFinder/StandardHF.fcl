@@ -1,0 +1,27 @@
+BEGIN_PROLOG
+
+
+#version for the vdcb geometry with different raw digit processing 
+standardtrigprimpass1: 
+{
+  module_type: "StandardTPFinderVDCB"
+  InputTag:    "simwire"
+  finderCol: 
+  {
+    tool_type: "TriggerPrimitiveFinderPass1"
+    UseSignalKill: true        
+    SignalKillLookahead: 6
+    SignalKillThreshold: 15
+    SignalKillNContig:   10
+  }
+  finderInd: 
+  {
+    tool_type: "TriggerPrimitiveFinderPass1"
+    UseSignalKill: true        
+    SignalKillLookahead: 6
+    SignalKillThreshold: 15
+    SignalKillNContig:   10
+  }
+}
+
+END_PROLOG

@@ -9,16 +9,18 @@ class TriggerPrimitiveFinderTool {
 public:
     struct Hit
     {
-        Hit(int _channel, int _startTime, int _charge, int _timeOverThreshold)
-            : channel(_channel),
-              startTime(_startTime),
-              charge(_charge),
-              timeOverThreshold(_timeOverThreshold)
-            {}
-        int channel;
-        int startTime;
-        int charge;
-        int timeOverThreshold;
+    Hit(int _channel, int _startTime, int _peakCharge, int _SADC, int _timeOverThreshold)
+	: channel(_channel),
+	startTime(_startTime),
+	peakCharge(_peakCharge),
+	SADC(_SADC),
+	timeOverThreshold(_timeOverThreshold)
+      {}
+      int channel;
+      int startTime;
+      int peakCharge;
+      int SADC;
+      int timeOverThreshold;
     };
 
     virtual ~TriggerPrimitiveFinderTool() =default;

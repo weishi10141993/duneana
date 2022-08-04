@@ -1,0 +1,48 @@
+BEGIN_PROLOG
+
+absrunningsumtppass1: 
+{
+  module_type: "AbsRunningSumTPFinder"
+  InputTag:    "simwire"
+  finderCol: 
+  {
+    tool_type: "AbsRunningSumTPFinderPass1"
+    UseSignalKill: true        
+    SignalKillLookahead: 6
+    SignalKillThreshold: 15
+    SignalKillNContig:   10
+  }
+  finderInd: 
+  {
+    tool_type: "AbsRunningSumTPFinderPass1"
+    UseSignalKill: true        
+    SignalKillLookahead: 6
+    SignalKillThreshold: 15
+    SignalKillNContig:   10
+  }
+}
+
+#version for the vdcb geometry with different raw digit processing 
+absrunningsumtppass2: 
+{
+  module_type: "AbsRunningSumTPFinderVDCB"
+  InputTag:    "simwire"
+  finderCol: 
+  {
+    tool_type: "AbsRunningSumTPFinderPass1"
+    UseSignalKill: true        
+    SignalKillLookahead: 6
+    SignalKillThreshold: 15
+    SignalKillNContig:   10
+  }
+  finderInd: 
+  {
+    tool_type: "AbsRunningSumTPFinderPass1"
+    UseSignalKill: true        
+    SignalKillLookahead: 6
+    SignalKillThreshold: 15
+    SignalKillNContig:   10
+  }
+}
+
+END_PROLOG

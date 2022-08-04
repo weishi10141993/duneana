@@ -1,0 +1,8 @@
+#include "vdcb_tde_detsim.fcl"
+
+physics.producers.daq.NoiseOn:    false
+physics.producers.daq.PedestalOn: false
+physics.producers.daq.SuppressOn: false
+
+services.AdcSupressService:      @local::zsnone
+services.AdcCompressService:     @local::cmpreplace

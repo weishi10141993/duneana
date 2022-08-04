@@ -53,7 +53,7 @@ TriggerPrimitiveFinderPass2::hitFinding(const std::vector<short>& waveform,
     //---------------------------------------------
     bool is_hit=false;
     bool was_hit=false;
-    TriggerPrimitiveFinderTool::Hit hit(channel, 0, 0, 0);
+    TriggerPrimitiveFinderTool::Hit hit(channel, 0, 0, 0, 0);
     for(size_t isample=0; isample<waveform.size()-1; ++isample){
         // if(ich>11510) std::cout << isample << " " << std::flush;
         int sample_time=isample*m_downsampleFactor;
@@ -62,16 +62,16 @@ TriggerPrimitiveFinderPass2::hitFinding(const std::vector<short>& waveform,
         if(is_hit && !was_hit){
             // We just started a hit. Set the start time
             hit.startTime=sample_time;
-            hit.charge=adc;
+            hit.SADC=adc;
             hit.timeOverThreshold=m_downsampleFactor;
         }
         if(is_hit && was_hit){
-            hit.charge+=adc*m_downsampleFactor;
+            hit.SADC+=adc*m_downsampleFactor;
             hit.timeOverThreshold+=m_downsampleFactor;
         }
         if(!is_hit && was_hit){
             // The hit is over. Push it to the output vector
-            hit.charge/=m_multiplier;
+            hit.SADC/=m_multiplier;
             hits.push_back(hit);
         }
         was_hit=is_hit;

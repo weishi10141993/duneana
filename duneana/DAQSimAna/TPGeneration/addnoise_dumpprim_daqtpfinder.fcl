@@ -1,0 +1,123 @@
+# addnoise_dumpprim_daqtpfinder.fcl
+
+# Read in (presumably noise-free) waveforms, add noise and pedestals,
+# then find trigger primitives on the (now noisy) waveforms, and save
+# the trigger primitives (as "Hits") to a txt file in a format suitable
+# for TriggerAlgs. 
+#
+#Hit finding based on the "Absolute" Running Sum algorithm approach
+#where the waveforms are effectively integreated in real time and the 
+#algorithm outputs induction and collection TPs
+#
+
+BEGIN_PROLOG
+
+# This is the generic trigger primitive finder call. To make your own,
+#  add another call to "@local::trigprimpass1" to the producers list,
+#  and modify its settings later on
+
+absrunningsumtppass1: {
+   module_type: "AbsRunningSumTPFinder"
+   InputTag: "simwire"
+   finderCol: 
+   {  
+     tool_type: "AbsRunningSumTPFinderPass1"
+   }
+   finderInd:
+   {  
+   tool_type: "AbsRunningSumTPFinderPass1"
+   }    
+}
+END_PROLOG
+
+#include "DAQTPFinderDump.fcl"
+#include "standard_detsim_dune10kt_1x2x6.fcl"
+
+process_name: PrimSim
+
+services: @local::dunefd_simulation_services
+services.TFileService: { fileName: "deleteme.root" }
+services.TimeTracker:       {}
+services.MemoryTracker:         { } # default is one
+services.RandomNumberGenerator: {} #ART native random number generator
+// services.FileCatalogMetadata:  @local::art_file_catalog_mc
+services.NuRandomService:       @local::per_event_NuRandomService  # seedservice.fcl
+services.message:              @local::dune_message_services_prod
+
+source: {
+  module_type: RootInput
+  maxEvents:  -1        # Number of events to create
+}
+
+# Define and configure some modules to do work on each event.
+# First modules are defined; they are scheduled later.
+# Modules are grouped by type.
+physics: {
+   producers: {
+      simwire: {
+         module_type: "SimWireDUNE"
+         SimChannelLabel: "largeant"
+         NoiseOn: true
+         PedestalOn: true
+         DistortOn: false
+         SuppressOn: false
+         KeepEmptyChannels: true
+         AdcSimulator:      "adcsim_ideal"
+         UseRawDigitInput: true
+         RawDigitInputLabel: "daq"
+      }
+      
+      trigprim1: @local::absrunningsumtppass1
+
+      rns:            { module_type: "RandomNumberSaver" }
+   }
+   
+   analyzers:
+   {
+      # Create a Daqtpfinder for each trigger primitive finders. Make
+      # sure to add each one to the "ana" list below
+      daqanatrigprim1:     @local::standard_daqtpfinderdump
+      
+      hitdump: {
+         module_type: DAQTPFinderDump
+	 OutputFile:  "collection_tps.txt"
+	 OutputFile1: "induction_tps.txt"
+	 HitLabel:    "trigprim1"
+         InputTag: "simwire" #here
+         #MaxChannels: 10
+      }
+   }
+
+   simulate: [ rns, simwire, trigprim1]
+   ana: [ daqanatrigprim1,  hitdump ]
+
+   trigger_paths: [simulate] 
+   end_paths: [ ana ] 
+
+}
+
+#Set the thresholds for the HF 
+physics.producers.trigprim1.finderCol.Threshold: 900
+physics.producers.trigprim1.finderInd.Threshold: 900
+
+physics.analyzers.daqanatrigprim1.HitLabel: "trigprim1"
+
+# =====================================================================
+# You probably won't need to change anything below here
+
+# Shut up the backtracker
+services.message.destinations.LogStandardOut.categories.BackTracker.limit: 0
+services.message.destinations.LogStandardError.categories.BackTracker.limit: 0
+
+# DetSim services. These are used by SimWire to add noise and
+# pedestals to the incoming (noise-free) waveforms
+services.SimChannelExtractService: @local::scxgeneric
+services.ChannelNoiseService:      @local::chnoiseold
+services.PedestalAdditionService:  @local::padprovided
+services.AdcDistortService:        @local::stuckbits
+services.AdcSuppressService:       @local::zsnone
+services.AdcCompressService:       @local::cmpreplace
+services.DetPedestalService:       @local::dune_fixedpeds
+
+#specify the geometry used in the previous simulation steps
+services.Geometry:                 @local::dune10kt_1x2x6_geo

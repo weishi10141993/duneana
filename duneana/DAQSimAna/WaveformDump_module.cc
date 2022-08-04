@@ -57,11 +57,28 @@ WaveformDump::WaveformDump(fhicl::ParameterSet const & p)
 
 void WaveformDump::analyze(art::Event const& e)
 {
-    auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(m_inputTag);
-    auto& digits_in =*digits_handle;
 
     art::ServiceHandle<geo::Geometry> geo;
-    for(auto&& digit: digits_in){
+
+
+    //auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(m_inputTag);
+    //auto& digits_in =*digits_handle;
+    std::vector<const raw::RawDigit*> digits_handle;
+    // std::vector<const raw::RawDigit*> inputDigits(num_channels, nullptr);
+
+    e.getView("tpcrawdecoder:daq", digits_handle);
+
+    for ( size_t c=0; c<digits_handle.size(); ++c ) {
+	const raw::RawDigit* digit = digits_handle[c];
+        bool isCollection=geo->SignalType(digit->Channel())==geo::kCollection;
+	m_outputFile << e.event() << " "
+		     << digit->Channel() << " "
+ 		     << isCollection << " ";
+ 	for(auto const& adc: digit->ADCs()){ m_outputFile << adc << " "; }
+        m_outputFile << std::endl;         	
+    }
+
+   /* for(auto&& digit: digits_in){
         bool isCollection=geo->SignalType(digit.Channel())==geo::kCollection;
         m_outputFile << e.event() << " "
                      << digit.Channel() << " "
@@ -70,7 +87,7 @@ void WaveformDump::analyze(art::Event const& e)
             m_outputFile << adc << " ";
         }
         m_outputFile << std::endl;
-    }
+    }*/
 }
 
 DEFINE_ART_MODULE(WaveformDump)

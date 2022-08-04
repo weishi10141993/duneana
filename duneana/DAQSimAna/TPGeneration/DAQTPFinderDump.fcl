@@ -1,0 +1,13 @@
+BEGIN_PROLOG
+
+standard_daqtpfinderdump:
+{
+  module_type:		DAQTPFinderDump
+  #====================
+  HitLabel:		"hitfd" 	# string for the process that made the reco hits
+  RawDigitLabel:	"daq"
+  OutputFile:           "collection_tps.txt"
+  OutputFile1:          "induction_tps.txt"
+}
+
+END_PROLOG

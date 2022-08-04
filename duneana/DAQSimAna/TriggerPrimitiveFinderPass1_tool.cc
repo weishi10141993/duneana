@@ -95,28 +95,36 @@ TriggerPrimitiveFinderPass1::hitFinding(const std::vector<short>& waveform,
     //---------------------------------------------
     bool is_hit=false;
     bool was_hit=false;
-    TriggerPrimitiveFinderTool::Hit hit(channel, 0, 0, 0);
+    std::vector<int> hit_charge; 
+    TriggerPrimitiveFinderTool::Hit hit(channel, 0, 0, 0, 0);
     for(size_t isample=0; isample<waveform.size()-1; ++isample){
-        // if(ich>11510) std::cout << isample << " " << std::flush;
-        int sample_time=isample*m_downsampleFactor;
-        short adc=waveform[isample];
-        is_hit=adc>(short)m_threshold;
-        if(is_hit && !was_hit){
-            // We just started a hit. Set the start time
-            hit.startTime=sample_time;
-            hit.charge=adc;
-            hit.timeOverThreshold=m_downsampleFactor;
-        }
-        if(is_hit && was_hit){
-            hit.charge+=adc*m_downsampleFactor;
-            hit.timeOverThreshold+=m_downsampleFactor;
-        }
-        if(!is_hit && was_hit){
-            // The hit is over. Push it to the output vector
-            hit.charge/=m_multiplier;
-            hits.push_back(hit);
-        }
-        was_hit=is_hit;
+        
+      int sample_time=isample*m_downsampleFactor;
+      short adc=waveform[isample];
+      
+      //ignore first 100 ticks to let the pedestal stabilise 
+      if (isample > 100){
+	is_hit=adc>(short)m_threshold;
+	if(is_hit && !was_hit){
+	  // We just started a hit. Set the start time
+	  hit_charge.push_back(adc);
+	  hit.startTime=sample_time;
+	  hit.SADC=adc;
+	  hit.timeOverThreshold=m_downsampleFactor;
+	}
+	if(is_hit && was_hit){
+	  hit_charge.push_back(adc);
+	  hit.SADC+=adc*m_downsampleFactor;
+	  hit.timeOverThreshold+=m_downsampleFactor;
+	}
+	if(!is_hit && was_hit){
+	  // The hit is over. Push it to the output vector
+	  hit.peakCharge = *std::max_element(hit_charge.begin(), hit_charge.end());
+	  hits.push_back(hit);
+	  hit_charge.clear();
+	}
+	was_hit=is_hit;
+      }
     }
 }
 
