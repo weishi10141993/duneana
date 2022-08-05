@@ -103,27 +103,6 @@ bool Tolerance(double a, double b)
   } 
 
 // ------------------------------------------------------------------------------------------
-/*
-void SortbyVtpc(std::vector<std::vector<int> > & vecToSort)
-  {
-  if (vecToSort.size() == 0) return;
-  if (vecToSort[0].size() != 3) throw cet::exception("SignalShapeAna::SortbyVtpc") << "You're probably calling SortbyVtpc(vector<vector<int> > vec) with incorrect parameter." << std::endl;
-
-  // Init a vec of indexes to localise the initial array values of VecToSort
-  std::vector<int> idx(vecToSort.size());
-  std::iota(idx.begin(), idx.end(), 0);
-   
-  // Sort the idx vector according to a comparison of VecToSort elements.
-  // idx is permutated. I now have element i of idx, idx[i], giving the ranking of VecToSort[i].
-  std::stable_sort( idx.begin(), idx.end(), [&vecToSort](int i1, int i2){ return vecToSort.at(i1)[0] < vecToSort.at(i2)[0]; } );
-
-  // Re-arrange input vec
-  std::vector<std::vector<int> > vecTemp(vecToSort.size(), {-1, -1, -1});
-  for (unsigned int i = 0; i < vecToSort.size(); i++) vecTemp[i] = vecToSort[idx[i]];
-  vecToSort = vecTemp;
-
-  }
-*/
 // ------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------
@@ -435,7 +414,7 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 	ToI.length	= pandoraTrack[itrack].Length();
         fvec_Toi.push_back(ToI);
 
-	if (fVerbose) std::cout << "Adding track with NPoints = " << ToI.Npoints << " & thetaX = " << ToI.theta << "° & phiX " << ToI.phi << "° & length = " << ToI.length << std::endl;
+	if (fVerbose) std::cout << "Adding track with NPoints = " << ToI.Npoints << " & thetaX = " << ToI.theta << "° & phiX " << ToI.phi << "° & length = " << ToI.length << " cm." << std::endl;
 
       } // end for over pandoraTrack
    
