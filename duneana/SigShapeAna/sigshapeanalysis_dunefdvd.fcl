@@ -1,0 +1,54 @@
+#include "services_dune.fcl"
+#include "services_vdcoldbox.fcl"
+#include "localparams.fcl"
+
+process_name: SignalShapeAna
+
+services:
+{
+  TFileService: { fileName: "SignalShapeAna.root" }
+  FileCatalogMetadata:  @local::art_file_catalog_mc
+                        @table::vdcb_services            # services_vdcoldbox.fcl
+}
+
+
+source:
+{
+  module_type: RootInput
+  maxEvents: -1
+  fileNames: ["Some_Reco_File.root"]
+}
+
+coldbox_SignalShapeAnalysis:
+{
+  module_type:                    SignalShapeAna
+  @table::my_standard_config
+ # ToolList:[
+#	test: "does that work ?"
+#	]
+#  HitEfficiencyHistogramToolList: [ @local::TrackHitEfficiencyAnalysisTool ]
+}
+
+physics:
+{
+  producers:{}
+  filters:  {}
+  analyzers:{
+
+    analysistree: @local::coldbox_SignalShapeAnalysis
+
+  } # analyzers
+
+  ana:  [ analysistree ]
+
+  trigger_paths: []
+  end_paths:     [ ana ]
+
+} # physics
+
+
+#services.message.destinations.STDOUT.categories.ArtReport.limit: -1 # -1 = all. Not clear what this does exactly
+#services.message.destinations.STDOUT.categories.default.limit: -1
+#services.message.destinations.STDOUT.threshold: "INFO"
+#services.message.destinations.STDOUT.type: "cout"
+
