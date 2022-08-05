@@ -47,8 +47,4 @@ physics:
 } # physics
 
 
-#services.message.destinations.STDOUT.categories.ArtReport.limit: -1 # -1 = all. Not clear what this does exactly
-#services.message.destinations.STDOUT.categories.default.limit: -1
-#services.message.destinations.STDOUT.threshold: "INFO"
-#services.message.destinations.STDOUT.type: "cout"
 
