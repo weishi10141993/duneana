@@ -32,6 +32,18 @@ trigprimpass1: {
       SignalKillNContig: 10
    }
 }
+trigprimpass2: {
+   module_type: "TriggerPrimitiveFinder"
+   InputTag: "tpcrawdecoder:daq"
+   finder: {
+      tool_type: "TriggerPrimitiveFinderPass2"
+      UseSignalKill: true
+      SignalKillLookahead: 6
+      SignalKillThreshold: 15
+      SignalKillNContig: 10
+      ThresholdInSigma: 5
+   }
+}
 
 END_PROLOG
 
@@ -61,7 +73,13 @@ source: {
 # Modules are grouped by type.
 physics: {
    producers: {
+      trigprim12: @local::trigprimpass1
+      trigprim14: @local::trigprimpass1
       trigprim16: @local::trigprimpass1
+
+      trigprim30sig: @local::trigprimpass2
+      trigprim40sig: @local::trigprimpass2
+      trigprim50sig: @local::trigprimpass2
       
       rns:            { module_type: "RandomNumberSaver" }
    }
@@ -69,12 +87,18 @@ physics: {
    analyzers: {
       # Create an SNAna for each trigger primitive finders. Make
       # sure to add each one to the "ana" list below
-      snanatrigprim16:  @local::trigprim_snana   
+      snanatrigprim12:  @local::trigprim_snana
+      snanatrigprim14:  @local::trigprim_snana
+      snanatrigprim16:  @local::trigprim_snana
+
+      snanatrigprim30sig: @local::trigprim_snana
+      snanatrigprim40sig: @local::trigprim_snana
+      snanatrigprim50sig: @local::trigprim_snana
    }
 
-   simulate: [rns, trigprim16]
+   simulate: [rns, trigprim12, trigprim14, trigprim16, trigprim30sig, trigprim40sig, trigprim50sig]
 
-   ana     : [snanatrigprim16]
+   ana     : [snanatrigprim12, snanatrigprim14, snanatrigprim16, snanatrigprim30sig, snanatrigprim40sig, snanatrigprim50sig]
    
    trigger_paths: [ simulate ] 
    end_paths: [ ana ] 
@@ -84,12 +108,23 @@ physics: {
 # Modify the settings of each of the trigger primitive finders. If you
 # want to use a different trigger primitive finder class, set
 # "physics.producers.<itemname>.finder.tool_type: MyNewTriggerPrimitiveFinderTool"
+physics.producers.trigprim12.finder.Threshold: 1200
+physics.producers.trigprim14.finder.Threshold: 1400
 physics.producers.trigprim16.finder.Threshold: 1600
 
+physics.producers.trigprim30sig.finder.ThresholdInSigma: 300
+physics.producers.trigprim40sig.finder.ThresholdInSigma: 400
+physics.producers.trigprim50sig.finder.ThresholdInSigma: 500
 
 # Set the HitLabel to make sure each DaqAnaSim reads hits from its
 #  corresponding TriggerPrimitiveFinder
+physics.analyzers.snanatrigprim12.HitLabel: "trigprim12"
+physics.analyzers.snanatrigprim14.HitLabel: "trigprim14"
 physics.analyzers.snanatrigprim16.HitLabel: "trigprim16"
+
+physics.analyzers.snanatrigprim30sig.HitLabel: "trigprim30sig"
+physics.analyzers.snanatrigprim40sig.HitLabel: "trigprim40sig"
+physics.analyzers.snanatrigprim50sig.HitLabel: "trigprim50sig"
 
 # Only save IDEs in one of the output trees, since they're always the same and will only take up space otherwise
 # physics.analyzers.snanatrigprim800.SaveIDEs: true
