@@ -1,6 +1,6 @@
 #include "services_dune.fcl"
 #include "services_vdcoldbox.fcl"
-#include "localparams.fcl"
+#include "param_sigshapeana_dunefdvd.fcl"
 
 process_name: SignalShapeAna
 
