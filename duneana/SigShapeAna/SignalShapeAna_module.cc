@@ -250,7 +250,6 @@ private:
     std::string fWireLabel; // label associated to recob::Wire objects, i.e rawdigits with coherent noise removed
     double fTrackMinXExtension; // length in cm, projected along X ccoordinate, any track should have to be considered in the analysis.
     std::vector<double> fThetaRange; // [deg] theta_min and theta_max (X is the referent axis). Tracks are kept if theta_min < theta < theta_max
-    size_t fPlane; // 0 = ind1, 1 = ind2, and 2 = col 
 
     // Some internal variables needed globally
     int mRiseWindowSize = 25; // for waveforms signals : time window desired in tick unit before the max of the waveform 
@@ -349,11 +348,8 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
     fWireLabel 		 = p.get<std::string>("WireLabel");
     fTrackMinXExtension	 = p.get<double>("TrackMinXExtension");
     fThetaRange		 = p.get<std::vector<double> >("ThetaRange");
-    fPlane		 = p.get<size_t>("Plane");
 
     if (fThetaRange.size() != 2) throw cet::exception("SignalShapeAna") << "fThetaRange range must be 2 (thetamin, thetamax). Current size = " << fThetaRange.size() << std::endl;
-    if (fPlane != 0 && fPlane != 1 && fPlane != 2) throw cet::exception("SignalShapeAna") << "Plane must be 0, 1 or 2. Current value = " << fPlane << std::endl;
-//    if (fPlane != 2) throw cet::exception("SignalShapeAna") << "module not ready yet to study induction type signals." << std::endl;
 
     return;
   }
@@ -689,7 +685,6 @@ void SignalShapeAna::UpdateTrackOfInterest(art::Ptr<recob::Hit> m_hit, track_of_
 	// store current hit info in variables
 	std::tuple<size_t, size_t, size_t> hitIDInfo = GetWireVolTPCViewandID( (std::string) m_hit->WireID());
 	size_t plane = std::get<0>(hitIDInfo);
-///	if (plane != fPlane) return;
 	size_t vtpc = std::get<1>(hitIDInfo);
 	size_t wireID = std::get<2>(hitIDInfo);
 	float peaktime = m_hit->PeakTime();

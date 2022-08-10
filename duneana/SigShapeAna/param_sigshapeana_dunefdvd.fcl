@@ -5,13 +5,11 @@ my_standard_config:
 	module_type: "SignalShapeAna"
 
 	Verbose: true					# boolean for the module to be a little talktative.
-#	ievent: -1					# use -1 to analyze all events, or integer elsewhise. First event of the root file is indexed 1, not 0
 	PandoraTrackLabel: "pandoraTrack" 		# the label of recob::Track objects in input root file
 	TrackHitAssnsLabel: "pandoraTrack" 		# the label of art::Assns<recob::Track,recob::Hit,void>
 	WireLabel: "caldata:dataprep"			# label associated to recob::Wire objects
 	TrackMinXExtension: 15				# length in cm along X axis tracks must have to be considered in the analysis.
 	ThetaRange: [60, 90]				# [deg] theta_min and theta_max (from spherical coordinate using X as vertical axis). Tracks are kept if theta_min < theta < theta_max
-	Plane: 2 					# 2 = collection, 1 = induction2, 0 = induction1
 }
 
 END_PROLOG
