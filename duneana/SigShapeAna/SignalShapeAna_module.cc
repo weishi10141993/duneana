@@ -84,8 +84,8 @@ struct track_of_interest {
 	size_t subrun;
 	size_t event;
 	size_t plane;
-	std::array<std::unordered_map<size_t, double>, 3 > wiremin;
-	std::array<std::unordered_map<size_t, double>, 3 > wiremax;
+	std::array<std::unordered_map<size_t, size_t>, 3 > wiremin;
+	std::array<std::unordered_map<size_t, size_t>, 3 > wiremax;
 	size_t tickmin;
 	size_t tickmax;
 	size_t Npoints;
@@ -370,7 +370,6 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
     fNumEvents++;
 
 
-
    //////////////////////////////////////////////////////////////////////////
    //////////////// 1st part of the analysis ////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
@@ -476,8 +475,17 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
 		} // end for over artTrackHit
 
+	// check
+	for (size_t k = 0; k < fvec_Toi.size(); k++)
+	  {
+	  size_t plane = 0;
+	  for (auto & it : fvec_Toi.at(k).wiremin.at(plane))
+	    {
+	      size_t vtpc_wiremin = it.first; 
+	    std::cout << "vtpc in wiremin = " << vtpc_wiremin << std::endl;
 
-
+	    }
+	  }
 
 	// check wiremin and wiremax members of track_of_interest must have same key values
 	// WORK : add this in a function and perform a test, it'll be more explicit
@@ -770,15 +778,16 @@ std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInte
     else writedir += "/unknown";
     art::TFileDirectory dir = tfs->mkdir(writedir.c_str());
 
-    // Start loop over wiremin objects
-    // which is a bad way of saying that we actually loop over voltpc IDs
-    for(auto& it_wmin : mToI.wiremin.at(plane))
+    // Start loop over voltpcs
+    for (size_t vtpc = 0; vtpc < 4; vtpc++) // hardcode loop over vtpc in current geometry
       {
-      size_t vtpc = it_wmin.first;
+      // check is vtpc index exists in wiremin unordered_map
+      if (mToI.wiremin.at(plane).find(vtpc) == mToI.wiremin.at(plane).end()) continue;
+
       // I check that the voltpc index also exists in wiremax map
       if (mToI.wiremax.at(plane).find(vtpc) == mToI.wiremax.at(plane).end()) throw cet::exception("SignalShapeAna") << "found a voltpc in wiremin map but not in wiremax map" << std::endl; 
 
-      size_t eff_wmin = it_wmin.second;
+      size_t eff_wmin = mToI.wiremin.at(plane)[vtpc];
       size_t eff_wmax = mToI.wiremax.at(plane)[vtpc];
 
       // eff_wmin and eff_wmax are the index of Wires in recob::Wire object
