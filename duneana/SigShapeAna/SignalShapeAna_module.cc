@@ -84,8 +84,8 @@ struct track_of_interest {
 	size_t subrun;
 	size_t event;
 	size_t plane;
-	std::unordered_map<size_t, double> wiremin;
-	std::unordered_map<size_t, double> wiremax;
+	std::array<std::unordered_map<size_t, double>, 3 > wiremin;
+	std::array<std::unordered_map<size_t, double>, 3 > wiremax;
 	size_t tickmin;
 	size_t tickmax;
 	size_t Npoints;
@@ -196,10 +196,12 @@ private:
       Params:
 	* track_of_interest : strcuture contaning relevant information to describe a track to study
 	* std::vector<recob::Wire> larsoft Wire objjects.
-      Returns a vector of TH1F which are the centered waveforms.
+	* directory to write output objects inside root file 
+      Returns an array of 3 vectors of TH1F which are the centered waveforms.
+      1st element of array = vector of TH1 for induction 1, etc.
     ...
  * ---- */
-   std::vector<TH1F*> StoreWireRegionsOfTracksOfInterest(track_of_interest &, std::vector<recob::Wire>);
+   std::array<std::vector<TH1F*>, 3> StoreWireRegionsOfTracksOfInterest(track_of_interest &, std::vector<recob::Wire>, std::string);
 
     /* ---
     Write the content of input recob::Wire object associated to track_of_oiniterest into a histogram, and updates vector of TH1F (centered waveform)
@@ -209,9 +211,10 @@ private:
 	* size_t : voltpc index
 	* recob::Wire object (larsoft)
 	* std::vector<TH1F*> : vector of cenetred waveform which will be updated by the method, adding the current waveform at play
+	* art::TFileDirectory : directory to write histogram in current root file
       No return
  * ---- */
-   void StoreWireRegionOfInterestAsHistogram(track_of_interest &, size_t, recob::Wire, std::vector<TH1F*>&);
+   void StoreWireRegionOfInterestAsHistogram(track_of_interest &, size_t, recob::Wire, std::vector<TH1F*>&, art::TFileDirectory);
 
 
     /* ---
@@ -219,12 +222,17 @@ private:
     Resulting histogram is stored
       Params:
 	* track_of_interest : strcuture contaning relevant information to describe a track to study
-	* std::vector<TH1F*> : vector of centered waveforms. The method will check that the binning is the same for all the same
+	* std::array<std::vector<TH1F*>, 3> : array of vectors of centered waveforms :
+		--> 1st array element is vector of centered waveforms for induction 1
+		--> 2nd array element is vector of centered waveforms for induction 2
+		--> 3rd array element is vector of centered waveforms for collection
+	The method will check that the binning is the same for all the hists
+	* std::string : directory in root file to write objects
 	  if not, exception raised.
       No return
     ...
  * ---- */
-  void PerformCoherentAdditionOfWaveforms(track_of_interest, std::vector<TH1F*>);
+  void PerformCoherentAdditionOfWaveforms(track_of_interest, std::array<std::vector<TH1F*>, 3>, std::string);
 
 
     // The variables that will go into the n-tuple.
@@ -250,6 +258,8 @@ private:
     // Access ART's TFileService, which will handle creating and writing
     // histograms and n-tuples for us.
     art::ServiceHandle<art::TFileService> tfs;
+    std::unordered_map<size_t, size_t> NtrackperEvent; // mapping of type (ievent, Ntracks) to keep track of event number in which track(s) have been saved, and how many have. 
+
  
     // Keep track of the angles of the tracks 
     // theta, phi angles of the traxks, spherical coordinate assuming X as referent axis (instead of z in canonical sph. coord.)
@@ -343,7 +353,7 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
     if (fThetaRange.size() != 2) throw cet::exception("SignalShapeAna") << "fThetaRange range must be 2 (thetamin, thetamax). Current size = " << fThetaRange.size() << std::endl;
     if (fPlane != 0 && fPlane != 1 && fPlane != 2) throw cet::exception("SignalShapeAna") << "Plane must be 0, 1 or 2. Current value = " << fPlane << std::endl;
-    if (fPlane != 2) throw cet::exception("SignalShapeAna") << "module not ready yet to study induction type signals." << std::endl;
+//    if (fPlane != 2) throw cet::exception("SignalShapeAna") << "module not ready yet to study induction type signals." << std::endl;
 
     return;
   }
@@ -365,7 +375,6 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
 
 
-
    //////////////////////////////////////////////////////////////////////////
    //////////////// 1st part of the analysis ////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
@@ -381,7 +390,7 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
    // I think for the moment the module is fine, but I keep track of the call in case I need it at some point
 ///   bool isMC = !event.isRealData();
 
-   if (fVerbose) std::cout << "Ntracks to study = " << pandoraTrack.size() << std::endl;
+//   if (fVerbose) std::cout << "Ntracks to study = " << pandoraTrack.size() << std::endl;
   
    // Loop over tracks and select interesting ones
    for (size_t itrack=0; itrack<pandoraTrack.size(); itrack++){		
@@ -404,6 +413,7 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
       // assume that 2 tracks will unlikely have these same characteristics in a given event
       // init easy characteristics
       // more complicated characteristics will be updated later
+  
         track_of_interest ToI;
 	ToI.run 	= fRun;
 	ToI.subrun 	= fSubRun;
@@ -414,6 +424,19 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 	ToI.length	= pandoraTrack[itrack].Length();
         fvec_Toi.push_back(ToI);
 
+/*        std::vector<track_of_interest> ToI(3);
+	for (size_t i = 0; i < 3; i++)
+	  {
+	  ToI[i].run	 	= fRun;
+	  ToI[i].subrun 	= fSubRun;
+	  ToI[i].event		= fEvent;
+	  ToI[i].Npoints	= pandoraTrack[itrack].NPoints();
+	  ToI[i].theta		= thetaX;
+	  ToI[i].phi		= phiX;
+	  ToI[i].length		= pandoraTrack[itrack].Length();
+	  }
+        fvec_Toi.push_back(ToI);
+*/
 	if (fVerbose) std::cout << "Adding track with NPoints = " << ToI.Npoints << " & thetaX = " << ToI.theta << "° & phiX " << ToI.phi << "° & length = " << ToI.length << " cm." << std::endl;
 
       } // end for over pandoraTrack
@@ -458,21 +481,28 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 		} // end for over artTrackHit
 
 
+
+
 	// check wiremin and wiremax members of track_of_interest must have same key values
 	// WORK : add this in a function and perform a test, it'll be more explicit
 	for (size_t k = 0; k < fvec_Toi.size(); k++)
 	  {
-	  for (auto & it : fvec_Toi.at(k).wiremin)
-	    { 
-	    size_t vtpc = it.first; 
-	    if (fvec_Toi.at(k).wiremax.find(vtpc) == fvec_Toi.at(k).wiremax.end()) throw cet::exception("SignalShapeAna") << "found a voltpc index in wiremin map but not in wiremax map" << std::endl;
-	    } // end for over wiremin
-	  for (auto & it : fvec_Toi.at(k).wiremax) // switch roles of wiremin and wiremax
-	    { 
-	    size_t vtpc = it.first; 
-	    if (fvec_Toi.at(k).wiremin.find(vtpc) == fvec_Toi.at(k).wiremin.end()) throw cet::exception("SignalShapeAna") << "found a voltpc index in wiremax map but not in wiremin map" << std::endl;
-	    } // end for over wiremin
+	  // loop over planes 0, 1 and 2
+	  for (size_t iplane = 0; iplane < 3; iplane++)
+	    {
+	    for (auto & it : fvec_Toi.at(k).wiremin.at(iplane))
+	      { 
+	      size_t vtpc = it.first; 
+	      if (fvec_Toi.at(k).wiremax.at(iplane).find(vtpc) == fvec_Toi.at(k).wiremax.at(iplane).end()) throw cet::exception("SignalShapeAna") << "found a voltpc index in wiremin map but not in wiremax map" << std::endl;
+	      } // end for over wiremin
+	    for (auto & it : fvec_Toi.at(k).wiremax.at(iplane)) // switch roles of wiremin and wiremax
+	      { 
+	      size_t vtpc = it.first; 
+	      if (fvec_Toi.at(k).wiremin.at(iplane).find(vtpc) == fvec_Toi.at(k).wiremin.at(iplane).end()) throw cet::exception("SignalShapeAna") << "found a voltpc index in wiremax map but not in wiremin map" << std::endl;
+	      } // end for over wiremax
+	    } // end loop over planes
 	  } // end check loop
+
 
 	// make some printing regarding the track of interest found int the current event
 	if (fVerbose){
@@ -480,13 +510,17 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 	  for (size_t k = 0; k < fvec_Toi.size(); k++)
 	    {
 	    std::cout << "--- track of interest #" << k+1 << " --- \n";
-	    std::cout << "\trun " << fvec_Toi.at(k).run << "; subrun " << fvec_Toi.at(k).subrun << "; event " << fvec_Toi.at(k).event << "\n"; 
-	    std::cout << "\t wire domain : \n";
-	    for (auto& it_wmin: fvec_Toi.at(k).wiremin){
-	      size_t vtpc = it_wmin.first;
-	      std::cout << "\t\tvtpc " << vtpc;
-	      std::cout << " w in [ " << it_wmin.second << " --> " << fvec_Toi.at(k).wiremax.at(vtpc) << " ]\n";
-      	      }
+	    std::cout << "\t--> run " << fvec_Toi.at(k).run << "; subrun " << fvec_Toi.at(k).subrun << "; event " << fvec_Toi.at(k).event << "\n"; 
+	    std::cout << "\twire domain : \n";
+	    for (size_t i_plane = 0; i_plane < 3; i_plane++)
+	      {
+	      std::cout << "\tview plane #" << i_plane << "\n";
+	      for (auto& it_wmin: fvec_Toi.at(k).wiremin.at(i_plane)){
+	        size_t vtpc = it_wmin.first;
+	        std::cout << "\t\t\tvtpc " << vtpc;
+	        std::cout << " w in [ " << it_wmin.second << " --> " << fvec_Toi.at(k).wiremax.at(i_plane)[vtpc] << " ]\n";
+      	        }
+	      } // end loop over view planes
 	    std::cout << "\t tick domain : " << fvec_Toi.at(k).tickmin << " --> " << fvec_Toi.at(k).tickmax << "\n";
 //	    std::cout << "\t reco info : thetaX = " << fvec_Toi.at(k).theta << "° ; phiX = " << fvec_Toi.at(k).phi << "° ; length = " << fvec_Toi.at(k).length << "\n";
 	    std::cout << "-----------------------" << std::endl;
@@ -505,14 +539,24 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
         art::InputTag tag_Wire{fWireLabel};
 	auto const& Wires       = *event.getValidHandle< std::vector<recob::Wire> >(tag_Wire);
 
+
 	// Startr loop over tracks of interest
 	for (size_t kToi = 0; kToi < fvec_Toi.size(); kToi++)
 	  {
 	  // skip track of interest too close from time window boundaries
 	  if (fvec_Toi[kToi].tickmin < 50 || fvec_Toi[kToi].tickmax > (Wires.at(0).NSignal() - 50) ) continue;
 
-	  std::vector<TH1F*> mCenteredWaveforms = StoreWireRegionsOfTracksOfInterest(fvec_Toi[kToi], Wires);
-	  PerformCoherentAdditionOfWaveforms(fvec_Toi[kToi], mCenteredWaveforms);
+    	  // init the directory direction to store the wires
+//    	  size_t mEvent = fvec_Toi.at(kToi).event; 
+      	  std::string strdir = "event" + std::to_string(fEvent);
+    	  if (NtrackperEvent.find(fEvent) != NtrackperEvent.end()) strdir += "_" + std::to_string(NtrackperEvent.at(fEvent));
+	  NtrackperEvent[fEvent]++;
+
+	  std::array<std::vector<TH1F*>, 3> mCenteredWaveforms = StoreWireRegionsOfTracksOfInterest(fvec_Toi[kToi], Wires, strdir);
+
+	if (fVerbose) std::cout << "--- track of interest #" << kToi+1 << " --- \n";
+	  PerformCoherentAdditionOfWaveforms(fvec_Toi[kToi], mCenteredWaveforms, strdir);
+	if (fVerbose) std::cout << "-----------------------" << std::endl;
 	  } // end for over tracks of interest fvec_Toi
 
 
@@ -575,7 +619,7 @@ bool SignalShapeAna::TrackQualityCut(recob::Track track)
 
 // --------------------------------------------------------------------------------------------------------------------------
 
-int SignalShapeAna::FindMatchingTrackOfInterest(art::Ptr<recob::Track> Track, std::vector<track_of_interest> ToIs){
+int SignalShapeAna::FindMatchingTrackOfInterest(art::Ptr<recob::Track> Track, std::vector<track_of_interest>  ToIs){
   /*
  * 	find corresponding index of the track myTrack in the vector myToIs
  * 	Returns index position if found a match.
@@ -645,28 +689,28 @@ void SignalShapeAna::UpdateTrackOfInterest(art::Ptr<recob::Hit> m_hit, track_of_
 	// store current hit info in variables
 	std::tuple<size_t, size_t, size_t> hitIDInfo = GetWireVolTPCViewandID( (std::string) m_hit->WireID());
 	size_t plane = std::get<0>(hitIDInfo);
-	if (plane != fPlane) return;
+///	if (plane != fPlane) return;
 	size_t vtpc = std::get<1>(hitIDInfo);
 	size_t wireID = std::get<2>(hitIDInfo);
 	float peaktime = m_hit->PeakTime();
 
-	
+if (plane != 0 && plane !=1 && plane !=2) throw cet::exception("SignalShapeAna") << "Found a plane ID not in 0, 1 or 2." << std::endl;
  
 //std::cout << "Current hit info (vtpc plane wireID tick ) : " << " " << vtpc << " " << plane << " " << wireID << " " << m_hit->PeakTime() << std::endl;
 	
 	// check whether vecROIs[i_ROI] has already been updated
 	bool isFirst = false;
-	if (_ToI.wiremin.size() == 0) isFirst = true;
+	if (_ToI.wiremin.at(plane).size() == 0) isFirst = true;
 
 	// if _ToI has never been updated, simply init its wire/time infos
 	if (isFirst) 
 		{
-		if (_ToI.wiremin.size() > 0 || _ToI.wiremax.size()) {
+		if (_ToI.wiremin.at(plane).size() > 0 || _ToI.wiremax.at(plane).size()) {
 		  throw cet::exception("SignalShapeAna::UpdateTrackOfInterest") << "Vec member wiremin or wiremax of struct track_of_interest has size > 0 before first element added" << std::endl;
 		  }
-		_ToI.plane = plane;
-		_ToI.wiremin[vtpc] = wireID;
-		_ToI.wiremax[vtpc] = wireID;
+		_ToI.plane = plane; // obsolete
+		_ToI.wiremin.at(plane)[vtpc] = wireID;
+		_ToI.wiremax.at(plane)[vtpc] = wireID;
 		_ToI.tickmin = static_cast<size_t>(peaktime+0.5); // approx float to closest integer
 		_ToI.tickmax = static_cast<size_t>(peaktime+0.5);
 		}
@@ -678,19 +722,19 @@ void SignalShapeAna::UpdateTrackOfInterest(art::Ptr<recob::Hit> m_hit, track_of_
 
 		// update wireticks
 		// check if any wire has already been added in the current vtpc
-		auto it = _ToI.wiremin.find(vtpc);
-		bool isVtpcExist = (it != _ToI.wiremin.end());
+		auto it = _ToI.wiremin.at(plane).find(vtpc);
+		bool isVtpcExist = (it != _ToI.wiremin.at(plane).end());
 
 		// if current vtpc exists, update its extremas
 		if (isVtpcExist)
 		   {
-		   if (_ToI.wiremin.at(vtpc) > wireID) _ToI.wiremin.at(vtpc) = wireID;
-		   if (_ToI.wiremax.at(vtpc) < wireID) _ToI.wiremax.at(vtpc) = wireID;
+		   if (_ToI.wiremin.at(plane)[vtpc] > wireID) _ToI.wiremin.at(plane)[vtpc] = wireID;
+		   if (_ToI.wiremax.at(plane)[vtpc] < wireID) _ToI.wiremax.at(plane)[vtpc] = wireID;
 		   }
 		else // simply add the maps corresponding to key value vtpc
 		   {
-		   _ToI.wiremin[vtpc] = wireID;
-		   _ToI.wiremax[vtpc] = wireID;
+		   _ToI.wiremin.at(plane)[vtpc] = wireID;
+		   _ToI.wiremax.at(plane)[vtpc] = wireID;
 		   }
 
 		} // end else (if isFirst)
@@ -702,11 +746,13 @@ void SignalShapeAna::UpdateTrackOfInterest(art::Ptr<recob::Hit> m_hit, track_of_
 
   } // end method UpdateTrackofInterest
 
+// --------------------------------------------------------------------------------------------------------------------------
+
 
 // --------------------------------------------------------------------------------------------------------------------------
 
 
-std::vector<TH1F*> SignalShapeAna::StoreWireRegionsOfTracksOfInterest(track_of_interest & mToI, std::vector<recob::Wire> mWires)
+std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInterest(track_of_interest & mToI, std::vector<recob::Wire> mWires, std::string mainwritedir)
   {
 
   // update tick window to make it a bit larger
@@ -716,64 +762,69 @@ std::vector<TH1F*> SignalShapeAna::StoreWireRegionsOfTracksOfInterest(track_of_i
   if (mToI.tickmax > (float) mWires.at(0).NSignal()) mToI.tickmax = mWires.at(0).NSignal() - 1; 
 
   // output vector declaration
-  std::vector<TH1F*> vecCenteredWaveforms; // vec of histograms each containing centered waveforms
+  std::array<std::vector<TH1F*>, 3> arrayvecCenteredWaveforms; // vec of histograms each containing centered waveforms
 
 
-  // plane of the current Troc of interest
-  size_t plane = mToI.plane;
-  // Start loop over wiremin objects
-  // which is a bad way of saying that we actually loop over voltpc IDs
-  for(auto& it_wmin : mToI.wiremin)
+  // loop over plane views
+  for (int plane = 0; plane < 3; plane++)
     {
-    size_t vtpc = it_wmin.first;
-    // I check that the voltpc index also exists in wiremax map
-    if (mToI.wiremax.find(vtpc) == mToI.wiremax.end()) throw cet::exception("SignalShapeAna") << "found a voltpc in wiremin map but not in wiremax map" << std::endl; 
+    std::string writedir = mainwritedir;
+    if (plane == 0) writedir += "/ind1";
+    else if (plane == 1) writedir += "/ind2";
+    else if (plane == 2) writedir += "/col";
+    else writedir += "/unknown";
+    art::TFileDirectory dir = tfs->mkdir(writedir.c_str());
 
-    size_t eff_wmin = it_wmin.second;
-    size_t eff_wmax = mToI.wiremax.at(vtpc);
-
-    // eff_wmin and eff_wmax are the index of Wires in recob::Wire object
-    // A correction regarding the plane ID and voltpc ID must be made
-    // for instance, in coldbox v1,  induction 2 Wires ranges in [| 384 ; 1023 |]
-    // Thus there are 640 Wires, 320 in each voltpc. 
-    // [| 384 ; 703 |] for voltpc 0 and [| 704 ; 1023 |] for voltpc 2 (top electronics)
-    // for the moment corrections applied are only valid for coldbox CRP1
-    if (vtpc == 0 || vtpc == 1)
-       {
-       if (plane == 1) {eff_wmin += 384; eff_wmax += 384;}
-       if (plane == 2) {eff_wmin += 1024; eff_wmax += 1024;}
-       }
-    if (vtpc == 2 || vtpc == 3)
-       {
-       if (plane == 1) {eff_wmin += 384 + 320; eff_wmax += 384 + 320;}
-       if (plane == 2) {eff_wmin += 1024 + 288; eff_wmax += 1024 + 288;}
-       }
-
-    // check that effective wireIDs are not out of range, which for CRP1 coldbox is [0; 1599]
-    if (eff_wmin < 0 || eff_wmin > 1599) throw::cet::exception("SignalShapeAna") << "effective wiremin index is out of range ! value = " << eff_wmin << std::endl;
-    if (eff_wmax < 0 || eff_wmax > 1599) throw::cet::exception("SignalShapeAna") << "effective wiremax index is out of range ! value = " << eff_wmax << std::endl;
-
-
-
-    // Start loop from effective wiremin to effective wiremax (both included)
-    for (size_t iw = eff_wmin; iw <= eff_wmax; iw++)
+    // Start loop over wiremin objects
+    // which is a bad way of saying that we actually loop over voltpc IDs
+    for(auto& it_wmin : mToI.wiremin.at(plane))
       {
-      StoreWireRegionOfInterestAsHistogram(mToI, vtpc, mWires.at(iw), vecCenteredWaveforms);
-      } // end loop over wires
+      size_t vtpc = it_wmin.first;
+      // I check that the voltpc index also exists in wiremax map
+      if (mToI.wiremax.at(plane).find(vtpc) == mToI.wiremax.at(plane).end()) throw cet::exception("SignalShapeAna") << "found a voltpc in wiremin map but not in wiremax map" << std::endl; 
+
+      size_t eff_wmin = it_wmin.second;
+      size_t eff_wmax = mToI.wiremax.at(plane)[vtpc];
+
+      // eff_wmin and eff_wmax are the index of Wires in recob::Wire object
+      // A correction regarding the plane ID and voltpc ID must be made
+      // for instance, in coldbox v1,  induction 2 Wires ranges in [| 384 ; 1023 |]
+      // Thus there are 640 Wires, 320 in each voltpc. 
+      // [| 384 ; 703 |] for voltpc 0 and [| 704 ; 1023 |] for voltpc 2 (top electronics)
+      // for the moment corrections applied are only valid for coldbox CRP1
+      if (vtpc == 0 || vtpc == 1)
+         {
+         if (plane == 1) {eff_wmin += 384; eff_wmax += 384;}
+         if (plane == 2) {eff_wmin += 1024; eff_wmax += 1024;}
+         }
+      if (vtpc == 2 || vtpc == 3)
+         {
+         if (plane == 0) {eff_wmin += 128; eff_wmax += 128;}
+         if (plane == 1) {eff_wmin += 384 + 320; eff_wmax += 384 + 320;}
+         if (plane == 2) {eff_wmin += 1024 + 288; eff_wmax += 1024 + 288;}
+         }
+
+      // check that effective wireIDs are not out of range, which for CRP1 coldbox is [0; 1599]
+      if (eff_wmin < 0 || eff_wmin > 1599) throw::cet::exception("SignalShapeAna") << "effective wiremin index is out of range ! value = " << eff_wmin << std::endl;
+      if (eff_wmax < 0 || eff_wmax > 1599) throw::cet::exception("SignalShapeAna") << "effective wiremax index is out of range ! value = " << eff_wmax << std::endl;
+
+      // Start loop from effective wiremin to effective wiremax (both included)
+      for (size_t iw = eff_wmin; iw <= eff_wmax; iw++)
+        {
+        StoreWireRegionOfInterestAsHistogram(mToI, vtpc, mWires.at(iw), arrayvecCenteredWaveforms.at(plane), dir);
+        } // end loop over wires
+      } // end for over map wiremin elements which are of type map({voltpc, min wire index})
+  } // end loop over plane views
 
 
-    } // end for over map wiremin elements which are of type map({voltpc, min wire index})
-
-
-
-  return vecCenteredWaveforms;
+  return arrayvecCenteredWaveforms;
   }
 
 
 // --------------------------------------------------------------------------------------------------------------------------
 
 
-void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mToI, size_t voltpc, recob::Wire mWire, std::vector<TH1F*>& _vecCenteredWaveforms)
+void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mToI, size_t voltpc, recob::Wire mWire, std::vector<TH1F*>& _vecCenteredWaveforms, art::TFileDirectory dir)
   {
 
   size_t tmin = (size_t) mToI.tickmin;
@@ -786,18 +837,14 @@ void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mT
 
   size_t Nbins = tmax - tmin + 1;
 
-    // init histogram
-    art::ServiceHandle<art::TFileService> tfs;
-    std::string strdir = "event" + std::to_string(mToI.event);
-    art::TFileDirectory dir = tfs->mkdir(strdir.c_str());
-    std::string str_plane = "";
-    if (mToI.plane == 0) str_plane = "ind1";
-    else if (mToI.plane == 1) str_plane = "ind2";
-    else if (mToI.plane == 2) str_plane = "col";
-    else str_plane = "unknown";
-    std::string name = str_plane + "_vtpc" + std::to_string(voltpc) + "_" + std::to_string( static_cast<int>(mWire.Channel()) );
-    TH1F * h = dir.make<TH1F>(name.c_str(), "Wire signal;ticks;ADC", Nbins, (double) tmin - 0.5, (double) tmax + 0.5);
 
+//    std::string str_plane = "";
+//    if (mToI.plane == 0) str_plane = "ind1";
+//    else if (mToI.plane == 1) str_plane = "ind2";
+//    else if (mToI.plane == 2) str_plane = "col";
+//    else str_plane = "unknown";
+    std::string name = "vtpc" + std::to_string(voltpc) + "_" + std::to_string( static_cast<int>(mWire.Channel()) );
+    TH1F * h = dir.make<TH1F>(name.c_str(), "Wire signal;ticks;ADC", Nbins, (double) tmin - 0.5, (double) tmax + 0.5);
 
     // Fill histo
     std::vector<float>  signal = mWire.Signal();
@@ -810,9 +857,7 @@ void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mT
     // add an histogram for which the waveform is centered around the max
     // caution with the number of bins to include
     int Nbins_centered = mDescendWindowSize + mRiseWindowSize + 1; // default case when the window is large enough to contain entirely the centered signal
-    int refbin = h->GetMaximumBin();
-//    if ( (refbin - mRiseWindowSize - 1 ) < 0){ Nbins_centered = Nbins_centered - ( 1 - (refbin - mRiseWindowSize) ); meffRiseWindowSize = refbin - 1; }
-//    if ( (Nbins - refbin - mDescendWindowSize) < 0 ) Nbins_centered = Nbins_centered - ( mDescendWindowSize + refbin - Nbins );
+    int refbin = h->GetMaximumBin(); // work to do
 
     name += "_centered";
     TH1F * hCentered = dir.make<TH1F>(name.c_str(), "Centered wire signal;tick", Nbins_centered, -0.5, Nbins_centered - 0.5);
@@ -835,60 +880,76 @@ void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mT
 
 // --------------------------------------------------------------------------------------------------------------------------
 
+
+
 // note : the method assumes that all individual waveforms have the same binning convention
-void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, std::vector<TH1F*> vecCenteredWaveforms)
+void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, std::array<std::vector<TH1F*>, 3> vecCenteredWaveforms, std::string mainwritedir)
   {
 
-  if (vecCenteredWaveforms.size() == 0) return;
 
+  // loop over plane views
+  for (size_t plane = 0; plane < 3; plane++)
+    {
+    if (vecCenteredWaveforms.at(plane).size() == 0) continue;
 
-  art::ServiceHandle<art::TFileService> tfs;
-  std::string strdir = "event" + std::to_string(mToI.event);
-  art::TFileDirectory dir = tfs->mkdir(strdir.c_str());
-
-  // init coherent addition histogram
-  size_t nbins = vecCenteredWaveforms[0]->GetNbinsX();
-  double xlow = vecCenteredWaveforms[0]->GetBinLowEdge(1);
-  double xup = vecCenteredWaveforms[0]->GetBinLowEdge(nbins) + vecCenteredWaveforms[0]->GetBinWidth(nbins);;
+    std::string writedir = mainwritedir;
+    if (plane == 0) writedir += "/ind1";
+    else if (plane == 1) writedir += "/ind2";
+    else if (plane == 2) writedir += "/col";
+    else writedir += "/unknown";
+    art::TFileDirectory dir = tfs->mkdir(writedir.c_str());
+/*
+  //  art::ServiceHandle<art::TFileService> tfs;
+    std::string strdir = "event" + std::to_string(mToI.event);
+    if (plane == 0) strdir += "/ind1";
+    else if (plane == 1) strdir += "/ind2";
+    else if (plane == 2) strdir += "/col";
+    art::TFileDirectory dir = tfs->mkdir(strdir.c_str());
+*/
+    // init coherent addition histogram
+    size_t nbins = vecCenteredWaveforms.at(plane)[0]->GetNbinsX();
+    double xlow = vecCenteredWaveforms.at(plane)[0]->GetBinLowEdge(1);
+    double xup = vecCenteredWaveforms.at(plane)[0]->GetBinLowEdge(nbins) + vecCenteredWaveforms.at(plane)[0]->GetBinWidth(nbins);;
   
-  // name of histogram
-  // first get approx value of angles theta and phi that will go into the name
-  int approxtheta;
-  int approxphi;
-  if (mToI.theta < 0) approxtheta = static_cast<int>(mToI.theta-0.5);
-  else approxtheta = static_cast<int>(mToI.theta+0.5);
-  if (mToI.phi < 0) approxphi = static_cast<int>(mToI.phi-0.5);
-  else approxphi = static_cast<int>(mToI.phi+0.5);
-  std::string name = "CoherentAddition_theta_" + std::to_string(approxtheta) + "_phi_" + std::to_string(approxphi);
-  TH1D * hCoherent = dir.make<TH1D>(name.c_str(), "Signal coherently added", nbins, xlow, xup);
+    // name of histogram
+    // first get approx value of angles theta and phi that will go into the name
+    int approxtheta;
+    int approxphi;
+    if (mToI.theta < 0) approxtheta = static_cast<int>(mToI.theta-0.5);
+    else approxtheta = static_cast<int>(mToI.theta+0.5);
+    if (mToI.phi < 0) approxphi = static_cast<int>(mToI.phi-0.5);
+    else approxphi = static_cast<int>(mToI.phi+0.5);
+    std::string name = "CoherentAddition_theta_" + std::to_string(approxtheta) + "_phi_" + std::to_string(approxphi);
+    TH1D * hCoherent = dir.make<TH1D>(name.c_str(), "Signal coherently added", nbins, xlow, xup);
 
 
-  if (fVerbose) std::cout << "will add coherently " << vecCenteredWaveforms.size() << " waveforms." << std::endl;
+    if (fVerbose) std::cout << "will add coherently " << vecCenteredWaveforms.at(plane).size() << " waveforms on plane " << plane << "." << std::endl;
 
 
 
-  std::vector<float> content(nbins, 0.);
+    std::vector<float> content(nbins, 0.);
 
-  // start loop over centered waveforms
-  int n = vecCenteredWaveforms.at(0)->GetNbinsX();
-  int refbin = vecCenteredWaveforms.at(0)->GetMaximumBin();
-  for (size_t i = 0; i < vecCenteredWaveforms.size(); i++)
-     {
-     // check that all waveforms have the same number of bins
-     if (vecCenteredWaveforms[i]->GetNbinsX() != n) throw cet::exception("SignalShapeAna") << "Waveform histogram must have the same number of bins to be coherently added." << std::endl;
-     // check that all waveforms are centered the same way
-     if (vecCenteredWaveforms[i]->GetMaximumBin() != refbin) throw cet::exception("SignalShapeAna") << "Waveform histograms must be centered the same way." << std::endl;
-     // retrieve content of waveform and add it to vector of size nbin
-     for (int k = 0; k < vecCenteredWaveforms[i]->GetNbinsX(); k++) content[k] += vecCenteredWaveforms[i]->GetBinContent(k+1);
-     } // end for over waveform histograms vector
+    // start loop over centered waveforms
+    int n = vecCenteredWaveforms.at(plane)[0]->GetNbinsX();
+    int refbin = vecCenteredWaveforms.at(plane)[0]->GetMaximumBin(); // work to do
+    for (size_t i = 0; i < vecCenteredWaveforms.at(plane).size(); i++)
+       {
+       // check that all waveforms have the same number of bins
+       if (vecCenteredWaveforms.at(plane)[i]->GetNbinsX() != n) throw cet::exception("SignalShapeAna") << "Waveform histogram must have the same number of bins to be coherently added." << std::endl;
+       // check that all waveforms are centered the same way
+       if (vecCenteredWaveforms.at(plane)[i]->GetMaximumBin() != refbin) throw cet::exception("SignalShapeAna") << "Waveform histograms must be centered the same way." << std::endl;
+       // retrieve content of waveform and add it to vector of size nbin
+       for (int k = 0; k < vecCenteredWaveforms.at(plane)[i]->GetNbinsX(); k++) content[k] += vecCenteredWaveforms.at(plane)[i]->GetBinContent(k+1);
+       } // end for over waveform histograms vector
 
-  // Finally fill the histogram of coherent addition
-  for (int k = 1; k <= hCoherent->GetNbinsX(); k++) hCoherent->SetBinContent(k, content[k-1]);
+    // Finally fill the histogram of coherent addition
+    for (int k = 1; k <= hCoherent->GetNbinsX(); k++) hCoherent->SetBinContent(k, content[k-1]);
 
 // check
-//std::cout << "adding together " << vecCenteredWaveforms.size() << " waveforms." << std::endl; 
+//std::cout << "adding together " << vecCenteredWaveforms.at(plane).size() << " waveforms." << std::endl; 
 //for (unsigned size_t k = 0; k <  content.size(); k++) std::cout << k << "\t" << content[k] << std::endl;
 
+  } // end loop over plane views
 
   return;
   } // end method PerformCoherentAdditionOfWaveforms
@@ -910,10 +971,7 @@ void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, 
 
 // TO DO LIST
 /* 
-	* Publish this module in a feature branch
-	* Test it on more data files and compare with previous results
-	* make it compatible with more greometries
+	* make the module compatible with more greometries
 	* there's a place with room for optimization, I don't remember where
-	* should use size_t for all variables that are unsigned, like tickmin and tickmax, and give them very high and odd values like 98765 if needed
-	* see how to better handle the case of multiple tracks of interest inside one given event (for better storage)
+	* in output root file, waveforms are not sorted by voltpc, make that happen
 */
