@@ -8,8 +8,8 @@ my_standard_config:
 	PandoraTrackLabel: "pandoraTrack" 		# the label of recob::Track objects in input root file
 	TrackHitAssnsLabel: "pandoraTrack" 		# the label of art::Assns<recob::Track,recob::Hit,void>
 	WireLabel: "caldata:dataprep"			# label associated to recob::Wire objects
-	TrackMinXExtension: 15				# length in cm along X axis tracks must have to be considered in the analysis.
-	ThetaRange: [60, 90]				# [deg] theta_min and theta_max (from spherical coordinate using X as vertical axis). Tracks are kept if theta_min < theta < theta_max
+	TrackMinExtension: 15				# length in cm tracks must have to be considered in the analysis (allow removing noise tracks)
+	ThetaRange: [60, 120]				# [deg] theta_min and theta_max (from spherical coordinate using X as vertical axis). Tracks are kept if theta_min < theta < theta_max
 }
 
 END_PROLOG

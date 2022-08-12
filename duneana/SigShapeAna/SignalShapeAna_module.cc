@@ -248,7 +248,7 @@ private:
     std::string fPandoraTrackLabel; // the label of recob::Track objects
     std::string fTrackHitAssnsLabel; // the label of art::Assns<recob::Track,recob::Hit,void>
     std::string fWireLabel; // label associated to recob::Wire objects, i.e rawdigits with coherent noise removed
-    double fTrackMinXExtension; // length in cm, projected along X ccoordinate, any track should have to be considered in the analysis.
+    double fTrackMinExtension; // length in cm, projected along X ccoordinate, any track should have to be considered in the analysis.
     std::vector<double> fThetaRange; // [deg] theta_min and theta_max (X is the referent axis). Tracks are kept if theta_min < theta < theta_max
 
     // Some internal variables needed globally
@@ -346,7 +346,7 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
     fPandoraTrackLabel	 = p.get<std::string>("PandoraTrackLabel");
     fTrackHitAssnsLabel	 = p.get<std::string>("TrackHitAssnsLabel");
     fWireLabel 		 = p.get<std::string>("WireLabel");
-    fTrackMinXExtension	 = p.get<double>("TrackMinXExtension");
+    fTrackMinExtension	 = p.get<double>("TrackMinExtension");
     fThetaRange		 = p.get<std::vector<double> >("ThetaRange");
 
     if (fThetaRange.size() != 2) throw cet::exception("SignalShapeAna") << "fThetaRange range must be 2 (thetamin, thetamax). Current size = " << fThetaRange.size() << std::endl;
@@ -437,7 +437,7 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
       } // end for over pandoraTrack
    
 
-   if (fvec_Toi.size() < 1){ std::cout << "No track of interest found" << std::endl; return; }
+   if (fvec_Toi.size() < 1) return; 
 
 
 
@@ -475,17 +475,6 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
 		} // end for over artTrackHit
 
-	// check
-	for (size_t k = 0; k < fvec_Toi.size(); k++)
-	  {
-	  size_t plane = 0;
-	  for (auto & it : fvec_Toi.at(k).wiremin.at(plane))
-	    {
-	      size_t vtpc_wiremin = it.first; 
-	    std::cout << "vtpc in wiremin = " << vtpc_wiremin << std::endl;
-
-	    }
-	  }
 
 	// check wiremin and wiremax members of track_of_interest must have same key values
 	// WORK : add this in a function and perform a test, it'll be more explicit
@@ -616,8 +605,12 @@ std::tuple<double, double> SignalShapeAna::GetThetaPhiAngles(recob::Track track)
 
 bool SignalShapeAna::TrackQualityCut(recob::Track track)
 {
-  double Lx = TMath::Abs(track.Start().X() - track.End().X());
-  if (Lx < fTrackMinXExtension) return false;
+  auto start = track.Start();
+  auto end = track.End();
+  double L2 = (start.X()-end.X())*(start.X()-end.X()) + (start.Y()-end.Y())*(start.Y()-end.Y()) + (start.Z()-end.Z())*(start.Z()-end.Z());
+
+
+  if (L2 < (fTrackMinExtension*fTrackMinExtension)){ std::cout << "\tTrack discarded !" << std::endl; return false; }
   return true;
 }
 
