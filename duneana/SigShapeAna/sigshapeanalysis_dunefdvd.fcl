@@ -35,11 +35,11 @@ physics:
   filters:  {}
   analyzers:{
 
-    analysistree: @local::coldbox_SignalShapeAnalysis
+    analysis: @local::coldbox_SignalShapeAnalysis
 
   } # analyzers
 
-  ana:  [ analysistree ]
+  ana:  [ analysis ]
 
   trigger_paths: []
   end_paths:     [ ana ]
