@@ -83,6 +83,7 @@ struct track_of_interest {
 	size_t run;
 	size_t subrun;
 	size_t event;
+	size_t trackNumber;
 	size_t plane;
 	std::array<std::unordered_map<size_t, size_t>, 3 > wiremin;
 	std::array<std::unordered_map<size_t, size_t>, 3 > wiremax;
@@ -236,14 +237,17 @@ private:
 
 
     // The variables that will go into the n-tuple.
+    // NTuple + variables
+    TTree * fTree;
     size_t fNumEvents; // local event counter, i.e 1st event analyzed = 1
     size_t fEvent;   // global event number
     size_t fRun;   // run number
     size_t fSubRun; // subrun number
-
+    double fThetaX;
+    double fPhiX;
+    size_t fTrackNumber; // track counter for multiple track events
 
     // parameter to read from fcl file   
-
     bool fVerbose; // boolean for the module to be a little talktative.
     std::string fPandoraTrackLabel; // the label of recob::Track objects
     std::string fTrackHitAssnsLabel; // the label of art::Assns<recob::Track,recob::Hit,void>
@@ -264,9 +268,13 @@ private:
     // theta, phi angles of the traxks, spherical coordinate assuming X as referent axis (instead of z in canonical sph. coord.)
     TH1D* hTheta;
     TH1D* hPhi; 
+
     
     // Might need the geometry at some point
     const geo::GeometryCore*           fGeometry;       // pointer to Geometry service
+
+
+    double invpi = 1. / TMath::Pi();
 
   }; // end class SignalShapeAna def
 
@@ -302,6 +310,7 @@ private:
    throw cet::exception("SignalShapeAna") << "You're apparently trying to run this module with a geometry different from VD coldbox crp1. It is a risky attempt since this module will surely fail for any other geometry." << std::endl;
    }
 
+
     // Read in the parameters from the .fcl file.
     this->reconfigure(parameterSet);
   }
@@ -320,6 +329,14 @@ private:
     art::TFileDirectory dir = tfs->mkdir("");
     hTheta = dir.make<TH1D>("thetaX", "thetaX", 91, -0.5, 180.5);
     hPhi = dir.make<TH1D>("phiX", "phiX", 91, -180.5, 180.5);
+
+    fTree = dir.make<TTree>("Tree", "Tree");
+    fTree->Branch("Run", &fRun, "Run/I");
+    fTree->Branch("Subrun", &fSubRun, "Subrun/I");
+    fTree->Branch("Event", &fEvent, "Event/I");
+    fTree->Branch("TrackNumber", &fTrackNumber, "TrackNumber/I");
+    fTree->Branch("ThetaX", &fThetaX, "ThetaX/D");
+    fTree->Branch("PhiX", &fPhiX, "PhiX/D");
 
     // zero out the event counter
     fNumEvents = 0;
@@ -368,6 +385,11 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
     fRun    = event.run();
     fSubRun = event.subRun();
     fNumEvents++;
+    fTrackNumber = 0;
+
+    // reset angles values
+    // use dumb values to spot any bugs
+    fThetaX = -999.; fPhiX = -999.;
 
 
    //////////////////////////////////////////////////////////////////////////
@@ -396,13 +418,14 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
 	// Calculate spherical angles using X as the vertical axis
         std::tuple<double, double> trackSphericalX = GetThetaPhiAngles(pandoraTrack[itrack]);	
-        double thetaX = std::get<0>(trackSphericalX);
-        double phiX = std::get<1>(trackSphericalX);
-	hTheta->Fill(thetaX);
-	hPhi->Fill(phiX);
+        fThetaX = std::get<0>(trackSphericalX);
+        fPhiX = std::get<1>(trackSphericalX);
+	hTheta->Fill(fThetaX);
+	hPhi->Fill(fPhiX);
 
 	// track reco thetaX angle must lie in range thetamin --> thetamax
-	if ( thetaX < fThetaRange[0] || thetaX > fThetaRange[1] ) continue;
+	if ( fThetaX < fThetaRange[0] || fThetaX > fThetaRange[1] ) continue;
+        fTrackNumber++;
 
       // a Track of interest is defined according to its number of points and the reco angle values
       // assume that 2 tracks will unlikely have these same characteristics in a given event
@@ -413,11 +436,15 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 	ToI.run 	= fRun;
 	ToI.subrun 	= fSubRun;
 	ToI.event	= fEvent;
+	ToI.trackNumber	= fTrackNumber;
 	ToI.Npoints	= pandoraTrack[itrack].NPoints();
-	ToI.theta	= thetaX;
-	ToI.phi		= phiX;
+	ToI.theta	= fThetaX;
+	ToI.phi		= fPhiX;
 	ToI.length	= pandoraTrack[itrack].Length();
         fvec_Toi.push_back(ToI);
+
+        // store track basic ID to further be able to retrieve track info
+	fTree->Fill();
 
 /*        std::vector<track_of_interest> ToI(3);
 	for (size_t i = 0; i < 3; i++)
@@ -438,8 +465,7 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
    
 
    if (fvec_Toi.size() < 1) return; 
-
-
+   
 
 
 
@@ -541,8 +567,8 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
     	  // init the directory direction to store the wires
 //    	  size_t mEvent = fvec_Toi.at(kToi).event; 
-      	  std::string strdir = "event" + std::to_string(fEvent);
-    	  if (NtrackperEvent.find(fEvent) != NtrackperEvent.end()) strdir += "_" + std::to_string(NtrackperEvent.at(fEvent));
+      	  std::string strdir = "event" + std::to_string(fEvent) + "_" + std::to_string(fvec_Toi.at(kToi).trackNumber);
+//    	  if (NtrackperEvent.find(fEvent) != NtrackperEvent.end()) strdir += "_" + std::to_string(NtrackperEvent.at(fEvent));
 	  NtrackperEvent[fEvent]++;
 
 	  std::array<std::vector<TH1F*>, 3> mCenteredWaveforms = StoreWireRegionsOfTracksOfInterest(fvec_Toi[kToi], Wires, strdir);
@@ -588,7 +614,6 @@ std::tuple<double, double> SignalShapeAna::GetThetaPhiAngles(recob::Track track)
   // build track direction in cartesian system
   std::vector<double> trackDir = { TMath::Sin(thetaZ)*TMath::Cos(phiZ), TMath::Sin(thetaZ)*TMath::Sin(phiZ), TMath::Cos(thetaZ) };
   // calculate spherical angles taking X as the referent axis
-  double invpi = 1. / TMath::Pi();
   double phiX = TMath::ATan2(trackDir[2], trackDir[1]) * 180. * invpi;
   double norm = TMath::Sqrt(trackDir[0]*trackDir[0]+trackDir[1]*trackDir[1]+trackDir[2]*trackDir[2]);
   double thetaX = TMath::ACos(trackDir[0] / norm ) * 180. * invpi;
@@ -610,7 +635,7 @@ bool SignalShapeAna::TrackQualityCut(recob::Track track)
   double L2 = (start.X()-end.X())*(start.X()-end.X()) + (start.Y()-end.Y())*(start.Y()-end.Y()) + (start.Z()-end.Z())*(start.Z()-end.Z());
 
 
-  if (L2 < (fTrackMinExtension*fTrackMinExtension)){ std::cout << "\tTrack discarded !" << std::endl; return false; }
+  if (L2 < (fTrackMinExtension*fTrackMinExtension)){ /*std::cout << "\tTrack discarded !" << std::endl;*/ return false; }
   return true;
 }
 

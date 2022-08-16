@@ -21,12 +21,13 @@ source:
 
 coldbox_SignalShapeAnalysis:
 {
-  module_type:                    SignalShapeAna
-  @table::my_standard_config
- # ToolList:[
-#	test: "does that work ?"
-#	]
-#  HitEfficiencyHistogramToolList: [ @local::TrackHitEfficiencyAnalysisTool ]
+  module_type:		"SignalShapeAna"
+  Verbose:		true			# boolean for the module to be a little talktative.
+  PandoraTrackLabel: 	"pandoraTrack" 		# the label of recob::Track objects in input root file
+  TrackHitAssnsLabel:	"pandoraTrack" 		# the label of art::Assns<recob::Track,recob::Hit,void>
+  WireLabel:		"caldata:dataprep"	# label associated to recob::Wire objects
+  TrackMinExtension:	15			# length in cm tracks must have to be considered in the analysis (allow removing noise tracks)
+  ThetaRange:		[60, 120]		# [deg] theta_min and theta_max (from spherical coordinate using X as vertical axis). Tracks are kept if theta_min < theta < theta_max
 }
 
 physics:
