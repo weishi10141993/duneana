@@ -247,6 +247,12 @@ private:
     double fPhiX;
     size_t fTrackNumber; // track counter for multiple track events
 
+    int fWiremin[3][4]; // 3 = number of plane views (ind1, ind2, col). 4 = number of voltpcs
+    int fWiremax[3][4]; // min and max of wire ID in each voltpc. In vtpc = 0 & induction 2, min = wiremin[1][0] and max = wiremax[1][0]
+    size_t fTickmin;
+    size_t fTickmax;
+
+
     // parameter to read from fcl file   
     bool fVerbose; // boolean for the module to be a little talktative.
     std::string fPandoraTrackLabel; // the label of recob::Track objects
@@ -337,6 +343,13 @@ private:
     fTree->Branch("TrackNumber", &fTrackNumber, "TrackNumber/I");
     fTree->Branch("ThetaX", &fThetaX, "ThetaX/D");
     fTree->Branch("PhiX", &fPhiX, "PhiX/D");
+    fTree->Branch("Wiremin", &fWiremin, "Wiremin[3][4]/I");
+    fTree->Branch("Wiremax", &fWiremax, "Wiremax[3][4]/I");
+//    fTree->Branch("WireDomainInd1", &fWireDomainInd1, "voltpc[4]:wiremin[4]:wiremax[4]/I");
+//    fTree->Branch("WireDomainInd2", &fWireDomainInd2, "voltpc[4]:wiremin[4]:wiremax[4]/I");
+//    fTree->Branch("WireDomainCol", &fWireDomainCol, "voltpc[4]:wiremin[4]:wiremax[4]/I");
+    fTree->Branch("Tickmin", &fTickmin, "Tickmin/I");
+    fTree->Branch("Tickmax", &fTickmax, "Tickmax/I");
 
     // zero out the event counter
     fNumEvents = 0;
@@ -381,9 +394,6 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
     std::vector<track_of_interest> fvec_Toi;
 
     // Start by fetching some basic event information for our n-tuple.
-    fEvent  = event.id().event();
-    fRun    = event.run();
-    fSubRun = event.subRun();
     fNumEvents++;
     fTrackNumber = 0;
 
@@ -418,13 +428,13 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
 	// Calculate spherical angles using X as the vertical axis
         std::tuple<double, double> trackSphericalX = GetThetaPhiAngles(pandoraTrack[itrack]);	
-        fThetaX = std::get<0>(trackSphericalX);
-        fPhiX = std::get<1>(trackSphericalX);
-	hTheta->Fill(fThetaX);
-	hPhi->Fill(fPhiX);
+        double mThetaX = std::get<0>(trackSphericalX);
+        double mPhiX = std::get<1>(trackSphericalX);
+	hTheta->Fill(mThetaX);
+	hPhi->Fill(mPhiX);
 
 	// track reco thetaX angle must lie in range thetamin --> thetamax
-	if ( fThetaX < fThetaRange[0] || fThetaX > fThetaRange[1] ) continue;
+	if ( mThetaX < fThetaRange[0] || mThetaX > fThetaRange[1] ) continue;
         fTrackNumber++;
 
       // a Track of interest is defined according to its number of points and the reco angle values
@@ -433,32 +443,17 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
       // more complicated characteristics will be updated later
   
         track_of_interest ToI;
-	ToI.run 	= fRun;
-	ToI.subrun 	= fSubRun;
-	ToI.event	= fEvent;
+	ToI.run 	= event.run();
+	ToI.subrun 	= event.subRun();
+	ToI.event	= event.id().event();
 	ToI.trackNumber	= fTrackNumber;
 	ToI.Npoints	= pandoraTrack[itrack].NPoints();
-	ToI.theta	= fThetaX;
-	ToI.phi		= fPhiX;
+	ToI.theta	= mThetaX;
+	ToI.phi		= mPhiX;
 	ToI.length	= pandoraTrack[itrack].Length();
         fvec_Toi.push_back(ToI);
 
-        // store track basic ID to further be able to retrieve track info
-	fTree->Fill();
 
-/*        std::vector<track_of_interest> ToI(3);
-	for (size_t i = 0; i < 3; i++)
-	  {
-	  ToI[i].run	 	= fRun;
-	  ToI[i].subrun 	= fSubRun;
-	  ToI[i].event		= fEvent;
-	  ToI[i].Npoints	= pandoraTrack[itrack].NPoints();
-	  ToI[i].theta		= thetaX;
-	  ToI[i].phi		= phiX;
-	  ToI[i].length		= pandoraTrack[itrack].Length();
-	  }
-        fvec_Toi.push_back(ToI);
-*/
 	if (fVerbose) std::cout << "Adding track with NPoints = " << ToI.Npoints << " & thetaX = " << ToI.theta << "° & phiX " << ToI.phi << "° & length = " << ToI.length << " cm." << std::endl;
 
       } // end for over pandoraTrack
@@ -578,8 +573,33 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 	if (fVerbose) std::cout << "-----------------------" << std::endl;
 	  } // end for over tracks of interest fvec_Toi
 
-
-
+ 
+  	//////////////////////////////////////////////////////////////////////////
+	//////////////// 4th part of the analysis ////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////
+	// Store information in a TTree 
+	for (size_t kToi = 0; kToi < fvec_Toi.size(); kToi++)
+	  {
+	  fRun 			= fvec_Toi[kToi].run;
+	  fSubRun 		= fvec_Toi[kToi].subrun;  
+	  fEvent 		= fvec_Toi[kToi].event;  
+	  fTrackNumber 		= fvec_Toi[kToi].trackNumber;  
+	  fThetaX 		= fvec_Toi[kToi].theta;  
+	  fPhiX 		= fvec_Toi[kToi].phi;
+	  fTickmin 		= fvec_Toi[kToi].tickmin;
+	  fTickmax 		= fvec_Toi[kToi].tickmax;
+	  for (size_t view = 0; view < 3; view++)
+	     {
+	     for (size_t vtpc = 0; vtpc < 4; vtpc++)
+	       {
+	       if (fvec_Toi[kToi].wiremin.at(view).find(vtpc) == fvec_Toi[kToi].wiremin.at(view).end()) fWiremin[view][vtpc] = -999;
+	       else fWiremin[view][vtpc] = fvec_Toi[kToi].wiremin.at(view)[vtpc];
+	       if (fvec_Toi[kToi].wiremax.at(view).find(vtpc) == fvec_Toi[kToi].wiremax.at(view).end()) fWiremax[view][vtpc] = -999;
+	       else fWiremax[view][vtpc] = fvec_Toi[kToi].wiremax.at(view)[vtpc];
+	       }  // end voltpc loop
+	     } // end plane view loop
+	  fTree->Fill();
+	  }
 
     return;
 
