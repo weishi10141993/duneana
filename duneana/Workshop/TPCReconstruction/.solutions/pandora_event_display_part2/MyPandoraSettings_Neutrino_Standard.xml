@@ -83,11 +83,13 @@
         <ClusterListNames>ClustersU</ClusterListNames>
         <ShowDetector>true</ShowDetector>
     </algorithm>
+
     <algorithm type = "LArVisualMonitoring">
         <CaloHitListNames>CaloHitListV</CaloHitListNames>
         <ClusterListNames>ClustersV</ClusterListNames>
         <ShowDetector>true</ShowDetector>
     </algorithm>
+
     <algorithm type = "LArVisualMonitoring">
         <CaloHitListNames>CaloHitListW</CaloHitListNames>
         <ClusterListNames>ClustersW</ClusterListNames>
@@ -120,6 +122,7 @@
         <VertexListNames>CandidateVertices3D</VertexListNames>
         <ShowDetector>true</ShowDetector>
     </algorithm>
+
     <algorithm type = "LArVisualMonitoring">
         <ClusterListNames>ClustersW</ClusterListNames>
         <VertexListNames>NeutrinoVertices3D</VertexListNames>
@@ -369,5 +372,4 @@
         <ShowCurrentPfos>true</ShowCurrentPfos>
         <ShowDetector>true</ShowDetector>
     </algorithm>
-
 </pandora>
