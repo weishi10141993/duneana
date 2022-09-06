@@ -4,6 +4,6 @@ analyzeEvents:
   module_type:      "AnalyzeEvents"
   PFParticleLabel:  "pandora"
   TrackLabel:       "pandoraTrack"
-  CalorimetryLabel: "pandoraCalo"
+  CalorimetryLabel: "pandoracalo"
 }
 END_PROLOG
