@@ -1,15 +1,12 @@
-#include "services_sbnd.fcl"
-#include "simulationservices_sbnd.fcl"
-#include "messages_sbnd.fcl"
-#include "sam_sbnd.fcl"
+#include "services_dune.fcl"
 
 ###Reconstruction modules
-#include "ophit_finder_sbnd.fcl"
-#include "sbnd_flashfinder.fcl"
+#include "photpropservices_dune.fcl"
 
 ###Analyzer modules
-#include "hitdumpermodule.fcl"
-#include "opticaldetectormodules_sbnd.fcl"
+###include "hitdumpermodule.fcl"
+#include "opticaldetectormodules_dune.fcl"
+#include "opticaldetectorservices_dune.fcl"
 
 
 
@@ -20,10 +17,8 @@ services:
   # Load the service that manages root files for histograms.
   TFileService:              { fileName: "%ifb_%p_hist.root" }
   RandomNumberGenerator:     {}
-  message:                   @local::sbnd_message_services_prod # from messages_sbnd.fcl
-  FileCatalogMetadata:       @local::sbnd_file_catalog_mc       # from sam_sbnd.fcl
-                             @table::sbnd_services              # from services_sbnd.fcl
-                             @table::sbnd_g4_services
+  message:                   @local::standard_info
+                             @table::dunefd_1x2x6_simulation_services # from services_dune.fcl
 }
 
 
@@ -55,35 +50,32 @@ outputs:
 physics:
 {
 
-  #Reconstruction @OpHit level for PMTs
-  #Reconstruction @OpFlash level, TPC0 and TPC1
+  #Reconstruction from photon detectors
   producers:
   {
-    ophitpmt:      @local::sbnd_ophit_finder_pmt
-    opflashtpc0:   @local::SBNDSimpleFlashTPC0
-    opflashtpc1:   @local::SBNDSimpleFlashTPC1
+    ophit:     @local::dunefd_ophit
+    opflash:   @local::dunefd_opflash
+    rns:       { module_type: "RandomNumberSaver" }
   }
 
   #Load analyzers
-  #hitdumpertree from sbndcode/Commissioning/HitDumper_module
   #  Analyzer from larana/OpticalDetector
   analyzers:
   {
-    oprecoanatpc0: @local::standard_opflashana
-    oprecoanatpc1: @local::standard_opflashana
-    hitdumpertree: @local::hitdumper
+    opflashana:  @local::dunefd_opflashana
   }
 
 
   #define the producer and filter modules for this path, order matters,
   #filters reject all following items.  see lines starting physics.producers below
   reco: [
-    ophitpmt,
-    opflashtpc0,
-    opflashtpc1
+    ophit,
+    opflash
   ]
 
-  ana: [oprecoanatpc0, oprecoanatpc1, hitdumpertree]
+  ana: [
+    opflashana
+  ]
 
   # define the output stream, there could be more than one if using filters
   stream1: [out1]
@@ -98,35 +90,10 @@ physics:
 }
 
 
-### OpFlash configuration (use only PMTs)
-physics.producers.opflashtpc0.OpHitProducers: ["ophitpmt"]
-physics.producers.opflashtpc1.OpHitProducers: ["ophitpmt"]
+### Analyzer configuration - still setup for SBND, need to work out the 
+### DUNE translation
+physics.analyzers.opflashana.YMin: -600
+physics.analyzers.opflashana.YMax: 600
+physics.analyzers.opflashana.ZMin: 0
+physics.analyzers.opflashana.ZMax: 1300
 
-
-### Analyzer configuration
-physics.analyzers.oprecoanatpc0.OpFlashModuleLabel: "opflashtpc0"
-physics.analyzers.oprecoanatpc0.OpHitModuleLabel: "ophitpmt"
-physics.analyzers.oprecoanatpc1.OpFlashModuleLabel: "opflashtpc1"
-physics.analyzers.oprecoanatpc1.OpHitModuleLabel: "ophitpmt"
-
-physics.analyzers.oprecoanatpc0.MakePerEventFlashTree: true
-physics.analyzers.oprecoanatpc0.MakeFlashHitMatchTree: true
-physics.analyzers.oprecoanatpc1.MakePerEventFlashTree: true
-physics.analyzers.oprecoanatpc1.MakeFlashHitMatchTree: true
-
-physics.analyzers.oprecoanatpc1.YMin: -200
-physics.analyzers.oprecoanatpc1.YMax: 200
-physics.analyzers.oprecoanatpc1.ZMin: 0
-physics.analyzers.oprecoanatpc1.ZMax: 500
-
-physics.analyzers.oprecoanatpc0.YMin: -200
-physics.analyzers.oprecoanatpc0.YMax: 200
-physics.analyzers.oprecoanatpc0.ZMin: 0
-physics.analyzers.oprecoanatpc0.ZMax: 500
-
-physics.analyzers.hitdumpertree.keepCRThits: false
-physics.analyzers.hitdumpertree.makeCRTtracks: false
-physics.analyzers.hitdumpertree.readCRTtracks: false
-physics.analyzers.hitdumpertree.readMuonTracks: false
-physics.analyzers.hitdumpertree.readTruth: false
-physics.analyzers.hitdumpertree.savePOTinfo: false
