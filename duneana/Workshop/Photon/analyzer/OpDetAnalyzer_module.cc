@@ -27,7 +27,7 @@
 #include "lardataobj/Simulation/SimPhotons.h"
 #include "lardataobj/Simulation/sim.h"
 
-#include "sbncode/OpDet/PDMapAlg.h"
+// #include "sbncode/OpDet/PDMapAlg.h"
 
 #include <iostream>
 
@@ -60,7 +60,7 @@ private:
   std::vector<std::string> fInputModule;      // Input tag for OpDet collection
 
   // PDS map
-  std::unique_ptr<opdet::PDMapAlg> fPDSMapPtr;
+ // std::unique_ptr<opdet::PDMapAlg> fPDSMapPtr;
   std::vector<std::string> fPMTMapLabel, fArapucaMapLabel;
 
   std::vector<int> fNOpDetAll;
@@ -98,8 +98,8 @@ private:
 
 
 opdet::OpDetAnalyzer::OpDetAnalyzer(fhicl::ParameterSet const& pset)
-  : EDAnalyzer{pset},
-    fPDSMapPtr{art::make_tool<opdet::PDMapAlg>(pset.get<fhicl::ParameterSet>("PDSMapTool"))}
+  : EDAnalyzer{pset}//,
+    //fPDSMapPtr{art::make_tool<opdet::PDMapAlg>(pset.get<fhicl::ParameterSet>("PDSMapTool"))}
 {
   
   fVerbosity = pset.get<int>("Verbosity");
@@ -201,9 +201,9 @@ void opdet::OpDetAnalyzer::analyze(art::Event const& evt)
           std::map<int, int> PhotonsMap = photon.DetectedPhotons;
 
           // do not save if PD is not sensitive to this light
-          std::string pd_type=fPDSMapPtr->pdType(fOpChannel);
-          if (Reflected && pd_type=="xarapuca_vuv") continue;
-          if(!Reflected && (pd_type=="xarapuca_vis" || pd_type=="pmt_uncoated")) continue;
+        //  std::string pd_type=fPDSMapPtr->pdType(fOpChannel);
+   //          if (Reflected && pd_type=="xarapuca_vuv") continue;
+     //     if(!Reflected && (pd_type=="xarapuca_vis" || pd_type=="pmt_uncoated")) continue;
 
           for(auto it = PhotonsMap.begin(); it!= PhotonsMap.end(); it++)
           {
