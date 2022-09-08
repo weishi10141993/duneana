@@ -3,11 +3,8 @@ BEGIN_PROLOG
 OpDetAnalyzer:
 {
  module_type: "OpDetAnalyzer"
-
- InputModule: [pdfastsim, pdfastsimout]
-
+ InputModule: [largeant]
  Verbosity: 0
-
  PDSMapTool: {tool_type: sbndPDMapAlg}
 }
 

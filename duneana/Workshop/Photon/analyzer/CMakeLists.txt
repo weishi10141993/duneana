@@ -17,7 +17,8 @@ MODULE_LIBRARIES
 
   lardataobj_Simulation
 
-  sbndcode_OpDetSim
+  duneopdet_OpticalDetector
+#  sbndcode_OpDetSim
 )
 install_fhicl()
 install_source()
