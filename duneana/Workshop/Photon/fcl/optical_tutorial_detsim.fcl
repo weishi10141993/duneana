@@ -1,5 +1,5 @@
 #
-# File:    standard_detsim_sbnd.fcl
+# File:    optical_tutorial_detsim.fcl
 # Purpose: Simulates readout response to induced and collected charge
 #
 # This configuration runs the detector simulation
@@ -9,9 +9,6 @@
 #
 #
 
-
-# analyser
-#include "opticaldetectormodules_dune.fcl"
 
 
 #
@@ -57,6 +54,7 @@ physics:
   {
     rns:       { module_type: "RandomNumberSaver" }
     opdigi:         @local::dune35t_opdigi
+    daq:            @local::dune_detsim
   }
 
   analyzers:
@@ -65,7 +63,7 @@ physics:
   }
 
   #define the producer and filter modules for this path, order matters,
-  simulate:  [ rns, opdigi]
+  simulate:  [ rns, opdigi, daq]
 
   #define the output stream, there could be more than one if using filters
   stream1:   [ out1, wvfana ]
@@ -88,5 +86,24 @@ outputs:
   }
 }
 
+# Use fixed values instead of DB for pedestals.
+services.DetPedestalService: @local::dune_fixedpeds
+
+# DetSim flags.
+physics.producers.daq.NoiseOn:     true
+physics.producers.daq.PedestalOn:  true
+physics.producers.daq.DistortOn:   false
+physics.producers.daq.SuppressOn:  true
+
+# DetSim services.
+services.SimChannelExtractService: @local::scxgeneric
+services.ChannelNoiseService:      @local::chnoiseold
+services.PedestalAdditionService:  @local::padprovided
+services.AdcDistortService:        @local::stuckbits
+services.AdcSuppressService:       @local::zslegacy
+services.AdcCompressService:       @local::cmpblock
+
+# Disable bad channels.
+#services.IChannelStatusService.BadChannels: [ ]
 
 

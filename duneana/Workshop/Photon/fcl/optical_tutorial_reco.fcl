@@ -1,5 +1,7 @@
 #include "services_dune.fcl"
 
+
+
 ###Reconstruction modules
 #include "photpropservices_dune.fcl"
 
@@ -7,10 +9,13 @@
 ###include "hitdumpermodule.fcl"
 #include "opticaldetectormodules_dune.fcl"
 #include "opticaldetectorservices_dune.fcl"
-
-
+#include "HitDumper.fcl"
 
 process_name: Reco1
+
+
+
+
 
 services:
 {
@@ -63,6 +68,7 @@ physics:
   analyzers:
   {
     opflashana:  @local::dunefd_opflashana
+    hitdumper:   @local::hitdumper
   }
 
 
@@ -75,6 +81,7 @@ physics:
 
   ana: [
     opflashana
+    ,hitdumper
   ]
 
   # define the output stream, there could be more than one if using filters
