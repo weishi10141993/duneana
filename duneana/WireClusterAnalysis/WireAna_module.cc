@@ -8,13 +8,77 @@ wireana::WireAna::WireAna(fhicl::ParameterSet const& pset)
   fSimChannelLabel(pset.get< art::InputTag >("SimChannelLabel", "elecDrift")),
   fSimulationProducerLabel(pset.get< art::InputTag >("SimulationProducerLabel", "largeant"))
 {
+  fRawProducerLabel   = pset.get<art::InputTag>("RawProducerLabel","tpcrawdecoder:daq");
+  fNoiselessRawProducerLabel   = pset.get<art::InputTag>("NoiselessRawProducerLabel","tpcrawdecoder:sig");
   fLogLevel           = pset.get<int>("LogLevel", 10);
   fDoAssns            = pset.get<bool>("DoAssns", false);
   fNChanPerApa        = pset.get<int>("ChannelPerApa", 2560);
+  fNChanPerApaX       = pset.get<int>("ChannelPerApaX", 480);
+  fNChanPerApaUV      = pset.get<int>("ChannelPerApaUV", 800);
   fNTicksPerWire      = pset.get<unsigned int>("TickesPerWire", 6000);
   fMakeCluster        = pset.get<bool>("MakeCluster", true );
+  fTagTruth           = pset.get<bool>("TagTruth", true );
+  fMatcherDist        = pset.get<float>("MatcherDist", 20);
+  fMatcherScore       = pset.get<float>("MatcherScore", 5);
+  fBuffSize           = pset.get<int>("BufferSize", 100);
+
+
+  TruthCode = {
+    {"marley",1},
+    {"NeutronGenInRock",2},
+    {"Ar42GenInLAr",3},
+    {"U238ChainGenInAPA",4},
+    {"Rn222ChainPo218GenInLAr",5},
+    {"Co60GenInAPA",6},
+    {"Rn222ChainPb210GenInCPA",7},
+    {"Ar39GenInLAr",8},
+    {"Rn222ChainPb214GenInLAr",9},
+    {"Rn222ChainPo218GenInCPA",10},
+    {"Rn222ChainPb214GenInCPA",11},
+    {"Rn222ChainPb210GenInLAr",12},
+    {"K40GenInCPA",13},
+    {"Rn222ChainBi214GenInLAr",14},
+    {"Rn222ChainBi214GenInCPA",15},
+    {"Rn222ChainFromBi210GenInCPA",16},
+    {"Kr85GenInLAr",17},
+    {"U238ChainGenInCPA",18},
+    {"Rn222ChainRn222GenInLAr",19},
+    {"K42From42ArGenInCPA",20},
+    {"Rn222ChainGenInPDS",21},
+    {"K42From42ArGenInLAr",22}
+  };
+
+
+
+
+
+
+
+
+
+
   //auto const* geo = lar::providerFrom<geo::Geometry>();
   geo = lar::providerFrom<geo::Geometry>();
+
+  //double xyz[3];   
+  //double abc[3];                                                                 
+  //int chan;
+  //int cryo = geo->Ncryostats();                                                             
+  //for (int c=0; c<cryo;++c){                   
+  //  int tpc =geo->NTPC(c);                                               
+  //  for (int t=0; t<tpc; ++t){                                            
+  //    int Nplanes=geo->Nplanes(t,c);                                      
+  //    for (int p=0;p<Nplanes;++p) {                                        
+  //      int Nwires = geo->Nwires(p,t,c);                                  
+  //      for (int w=0;w<Nwires;++w){
+  //         geo->WireEndPoints(c,t,p,w,xyz,abc);
+  //         chan=geo->PlaneWireToChannel(p,w,t,c);  
+  //         std::cout << "FLAG " << chan << " " << c << " " << t << " " << p << " " << w << " " << xyz[0] << " " << xyz[1] << " " << xyz[2] <<  " " << abc[0] << " " << abc[1] << " " << abc[2] << std::endl;                                         
+  //      }
+  //    }
+  //  }
+  //}
+
   //geo = art::ServiceHandle<geo::Geometry>::get();
   fNPlanes = geo->Nplanes();
 
@@ -35,6 +99,7 @@ wireana::WireAna::WireAna(fhicl::ParameterSet const& pset)
   fDumpNClusters     = pset.get<int>("DUMPNCLUSTERS",-1);
 
   fHDF5DumpFileName      = pset.get<std::string>("HDF5NAME", "hdf5out.h5");
+  fHDF5DumpFileNameAPA      = pset.get<std::string>("HDF5APANAME", "hdf5out_APA.h5");
 
 
   fHistEnergyMax         = pset.get<float>("Histo_EMax", 10);
@@ -95,6 +160,15 @@ void wireana::WireAna::analyze(art::Event const & evt) {
     art::fill_ptr_vector(channellist, simChannelListHandle);
   SortWirePtrByChannel( channellist, true );
 
+  art::Handle<std::vector<raw::RawDigit>> rawListHandle, noiselessRawListHandle;
+  std::vector<art::Ptr<raw::RawDigit>> rawList, noiselessRawList;
+
+  if (evt.getByLabel(fRawProducerLabel, rawListHandle)) art::fill_ptr_vector(rawList, rawListHandle);
+  if (evt.getByLabel(fNoiselessRawProducerLabel, noiselessRawListHandle)) art::fill_ptr_vector(noiselessRawList, noiselessRawListHandle);
+
+  SortWirePtrByChannel( rawList, true );
+  SortWirePtrByChannel( noiselessRawList, true );
+
 
   // //Get channel-> wire,simchannel map
   if( fLogLevel >= 3 ) std::cout<<"Fill ch_w_sc"<<std::endl;
@@ -116,7 +190,7 @@ void wireana::WireAna::analyze(art::Event const & evt) {
       for( auto &ide: tdcide.second )
       {
         
-        if( fLogLevel >= 3 ) std::cout<<"ide.trackID: "<<ide.trackID<<std::endl;
+        if( fLogLevel >= 10 ) std::cout<<"ide.trackID: "<<ide.trackID<<std::endl;
         bool isSignal = trkid_to_label_map[ ide.trackID ] == "NuEScatter" || trkid_to_label_map[ ide.trackID ] == "marley";
         int pdg = PIS->TrackIdToParticle_P( ide.trackID )->PdgCode();
         float energy = ide.energy;
@@ -152,11 +226,11 @@ void wireana::WireAna::analyze(art::Event const & evt) {
         }
       }
 
-      if( fLogLevel >= 3 ) std::cout<<"FillHistogram: begin"<<std::endl;
+      if( fLogLevel >= 10 ) std::cout<<"FillHistogram: begin"<<std::endl;
       FillHistogram( energies, charges, kSAll, false );
       FillHistogram( energiesNeut, chargesNeut, kSNeutrino, false );
       FillHistogram( energiesRad, chargesRad, kSRad, false );
-      if( fLogLevel >= 3 ) std::cout<<"FillHistogram: end"<<std::endl;
+      if( fLogLevel >= 10 ) std::cout<<"FillHistogram: end"<<std::endl;
 
       //TH2FMap["TrueEnergyChargeDeposited"]->Fill(energy,charge);
       //TH2FMap["TrueEnergyChargeDeposited_electron"]->Fill(energy_e,charge_e);
@@ -210,26 +284,28 @@ void wireana::WireAna::analyze(art::Event const & evt) {
 
   if(fMakeCluster)
   {
-    if( fLogLevel>=10 ) std::cout<<"BuildInitialROIClusters(): Start"<<std::endl;
+    if( fLogLevel>=3 ) std::cout<<"BuildInitialROIClusters(): Start"<<std::endl;
     BuildInitialROIClusters();
-    if( fLogLevel>=10 ) std::cout<<"BuildInitialROIClusters(): Done"<<std::endl;
+    if( fLogLevel>=3 ) std::cout<<"BuildInitialROIClusters(): Done"<<std::endl;
     if ( MC ) 
     {
       TagAllROIClusterTruth( clockData );
-      if( fLogLevel>=10 ) std::cout<<"TagAllROIClusterTruth(): Done"<<std::endl;
+      if( fLogLevel>=3 ) std::cout<<"TagAllROIClusterTruth(): Done"<<std::endl;
     }
 
 
 
     //Match ROI across views
-    ROIMatcher matcher;
+    ROIMatcher matcher(fMatcherDist,fMatcherScore);
     matcher.SetData(plane_view_roicluster_map);
+    if( fLogLevel>=3 ) std::cout<<"matcher.SetData(): Done"<<std::endl;
     matcher.MatchROICluster();
-    if( fLogLevel>=10 ) std::cout<<"matcher.MatchROICluster(): Done"<<std::endl;
+    if( fLogLevel>=3 ) std::cout<<"matcher.MatchROICluster(): Done"<<std::endl;
     matcher.CleanDuplicates(fDeltaMetric);
     bool hasCluster = (matcher.GetMatchedClusters().size() != 0 );
     if( hasCluster )
     {
+      if( fLogLevel>=3 ) std::cout<<"matcher.SortROIClustersBySize() "<<std::endl;
       matcher.SortROIClustersBySize();
       //Logs
       if( fLogLevel >= 2 )
@@ -310,29 +386,19 @@ void wireana::WireAna::analyze(art::Event const & evt) {
       }
 
       std::vector<matchedroicluster> mclusters = matcher.GetMatchedClusters();
-      //CreateHDF5DataSet( evt, mclusters[0].clusters[0], wirelist, channellist );
-
-    }
-
-
-    for( auto p: plane_view_roicluster_map )
-    {
-      for( auto v: p.second )
+      std::cout<<"num of mclusters available: "<<mclusters.size()<<std::endl;
+      for (auto mcluster : mclusters)
       {
-        auto clusters = v.second;
-        std::sort(clusters.begin(), clusters.end(), [](auto &a, auto &b){ return a.ROIs.size() > b.ROIs.size(); } );
-        for( auto cluster: clusters )
-        {
-          if( cluster.nWires > 2 && cluster.clusterID>=0 ) 
-          {
-            CreateHDF5DataSet( evt, cluster, wirelist, channellist );
-          }
-        }
+        //std::cout<<mcluster<<std::endl;
+        CreateHDF5DataSet( evt, mcluster, wirelist, channellist );
       }
     }
 
-  }//end fMakeCluster
+  CreateHDF5ApaView( evt, rawList, noiselessRawList, channellist);
 
+  image_tuple->flush();
+  apa_tuple_xuv->flush();
+  }//end fMakeCluster
 
 
 }
@@ -363,7 +429,7 @@ void wireana::WireAna::beginJob() {
     for( auto partType : partTypes )
     {
       string n1 = "TrueEnergyChargeDeposited"+selType+partType, n2 = "TrueEnergyChargeDepositedInROI"+selType+partType;
-      if( fLogLevel >= 3 )
+      if( fLogLevel >= 12 )
       {
         std::cout<<n1<<", "<<n2<<std::endl;
       }
@@ -441,13 +507,16 @@ void wireana::WireAna::beginJob() {
   //unsigned int nIndWires = fApaNRows*fApaNColums*800;
   //unsigned int nColWires = fApaNRows*fApaNColums*960;
   hdffile = hep_hpc::hdf5::File(fHDF5DumpFileName, H5F_ACC_TRUNC);
+  hdffileAPA = hep_hpc::hdf5::File(fHDF5DumpFileNameAPA, H5F_ACC_TRUNC);
   std::cout<<"hdffile created"<<std::endl;
   image_tuple = new imager_t(hdffile, "images",
       {{"event_id",5}, 
       {"neutrino_P",4},  
       {"int_vtx",4},  
       {"part_P",4},  
-      "label",
+      "labelu",
+      "labelv",
+      "labelz",
       "nPart",
       "TPCID",
       "View",
@@ -457,51 +526,52 @@ void wireana::WireAna::beginJob() {
       {"energy",5},
       {"particle_counter",7},
       {"img_data",4}, //image data (width,height,min_channel,min_time)
-      {"img", {image_tick_width, image_channel_width}},
-      {"img_mask_pdg", {image_tick_width, image_channel_width}},
-      {"img_mask_trkid", {image_tick_width, image_channel_width}}
-      } 
+      {"img", {image_tick_width, image_channel_width,3}},
+      {"img_mask_pdg", {image_tick_width, image_channel_width,3}},
+      {"img_mask_trkid", {image_tick_width, image_channel_width,3}}
+      }
+      );
+  //hsize_t chunk_dims[2] = {100,10};
+  apa_tuple_xuv = new apaview_xuv_t(hdffileAPA, "apa_xuv",
+        {
+          {"event_id",4}, 
+          "APAID",
+          "NeutrinoTPCID",
+          "intType",
+          {"neutrino_P",4},  
+          {"int_vtx",4},  
+          {"lepton_P",4},  
+          {"particle_counter",7},
+          {"img_u", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_u_sig", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_u_mask_energy", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_u_mask_charge", {fNChanPerApaUV, fNTicksPerWire}},
+          {"img_u_mask_pdg", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_u_mask_trkid", {fNChanPerApaUV, fNTicksPerWire}},
+          {"img_v", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_v_sig", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_v_mask_energy", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_v_mask_charge", {fNChanPerApaUV, fNTicksPerWire}},
+          {"img_v_mask_pdg", {fNChanPerApaUV, fNTicksPerWire}},
+//          {"img_v_mask_trkid", {fNChanPerApaUV, fNTicksPerWire}},
+          {"img_x1", {fNChanPerApaX, fNTicksPerWire}},
+//          {"img_x1_sig", {fNChanPerApaX, fNTicksPerWire}},
+//          {"img_x1_mask_energy", {fNChanPerApaX, fNTicksPerWire}},
+//          {"img_x1_mask_charge", {fNChanPerApaX, fNTicksPerWire}},
+          {"img_x1_mask_pdg", {fNChanPerApaX, fNTicksPerWire}},
+//          {"img_x1_mask_trkid", {fNChanPerApaX, fNTicksPerWire}},
+          {"img_x2", {fNChanPerApaX, fNTicksPerWire}},
+//          {"img_x2_sig", {fNChanPerApaX, fNTicksPerWire}},
+//          {"img_x2_mask_energy", {fNChanPerApaX, fNTicksPerWire}},
+//          {"img_x2_mask_charge", {fNChanPerApaX, fNTicksPerWire}},
+          {"img_x2_mask_pdg", {fNChanPerApaX, fNTicksPerWire}}
+//          {"img_x2_mask_trkid", {fNChanPerApaX, fNTicksPerWire}}
+        },
+       fBuffSize
       );
 
-  //auto hdfImages = 
-  //  make_ntuple({hdffile,Form("images_%d_%d_%d",run,subrun,id)}, 
-
-      //hep_hpc::hdf5::make_column<short,2>("U", {nIndWires, fNTicksPerWire},
-      //  {nIndWires*sizeof(short),fNTicksPerWire/100}
-      //  ) 
-      //);
-      //hep_hpc::hdf5::make_column<unsigned short,2>("U_mask", {nIndWires, fNTicksPerWire}) );
-      //hep_hpc::hdf5::make_column<float,2>("V", {nIndWires, fNTicksPerWire}),
-      //hep_hpc::hdf5::make_column<unsigned short,2>("V_mask", {nIndWires, fNTicksPerWire}),
-      //hep_hpc::hdf5::make_column<float,2>("Z", {nColWires, fNTicksPerWire}),
-      //hep_hpc::hdf5::make_column<unsigned short,2>("Z_mask", {nColWires, fNTicksPerWire})
-  //    );
-  //auto hdfImages = hep_hpc::hdf5::make_ntuple({hdffile,"images"}, 
-  //    hep_hpc::hdf5::make_scalar_column<short>("channelID",image_channel_width),
-  //    hep_hpc::hdf5::make_scalar_column<short>("EventID",3),
-  //    hep_hpc::hdf5::make_scalar_column<float>("electron_P",4),
-  //    hep_hpc::hdf5::make_scalar_column<float>("photon_P",4),
-  //    hep_hpc::hdf5::make_scalar_column<float>("proton_P",4),
-  //    hep_hpc::hdf5::make_scalar_column<float>("neutron_P",4),
-  //    hep_hpc::hdf5::make_scalar_column<float>("other_P",4),
-  //    hep_hpc::hdf5::make_scalar_column<short>("nElectrons"),
-  //    hep_hpc::hdf5::make_scalar_column<short>("nPhoton"),
-  //    hep_hpc::hdf5::make_scalar_column<short>("nProton"),
-  //    hep_hpc::hdf5::make_scalar_column<short>("nNeutron"),
-  //    hep_hpc::hdf5::make_scalar_column<short>("nAlpha"),
-  //    hep_hpc::hdf5::make_scalar_column<short>("nOther"),
-  //    hep_hpc::hdf5::make_scalar_column<std::string>("plane"),
-  //    hep_hpc::hdf5::make_scalar_column<std::string>("type"),
-  //    hep_hpc::hdf5::make_scalar_column<short>("ticks",image_tick_width),
-  //    hep_hpc::hdf5::make_column<float,2>("image",{image_channel_width, image_tick_width}),
-  //    hep_hpc::hdf5::make_column<int,2>("image_pdg_mask",{image_channel_width, image_tick_width}),
-  //    hep_hpc::hdf5::make_column<short,2>("image_pid_mask",{image_channel_width, image_tick_width}),
-  //    hep_hpc::hdf5::make_scalar_column<short>("center_channel_tick",2)
-  //    );
 
 
-
-  //GetTrackInNeutrinoTruth if MC
 
 }
 
@@ -511,6 +581,7 @@ void wireana::WireAna::endJob()
   {
     c2numpy_close(&npywriter);
     delete image_tuple;
+    delete apa_tuple_xuv;
   }
 }
 
@@ -713,6 +784,29 @@ void wireana::WireAna::PrintClusters( std::vector<wirecluster> &clusters )
 
 }
 
+int wireana::WireAna::GetAPAID( int channel )
+{ 
+  return channel/fNChanPerApa; 
+}
+int wireana::WireAna::GetAPAViewID( int channel )
+{ 
+  unsigned int rcid = channel%fNChanPerApa; //reduced channel id
+  if ( rcid < fNChanPerApaUV ) return 0;
+  else if ( rcid < 2*fNChanPerApaUV ) return 1;
+  else if ( rcid < 2*fNChanPerApaUV + fNChanPerApaX ) return 2;
+  else if ( rcid < 2*fNChanPerApaUV + 2*fNChanPerApaX ) return 3;
+  return -1;
+}
+
+int wireana::WireAna::GetAPAWirePos( int channel )
+{ 
+  unsigned int rcid = channel%fNChanPerApa; //reduced channel id
+  if ( rcid < fNChanPerApaUV ) return rcid;
+  else if ( rcid < 2*fNChanPerApaUV ) return rcid-fNChanPerApaUV;
+  else if ( rcid < 2*fNChanPerApaUV + fNChanPerApaX ) return rcid-2*fNChanPerApaUV;
+  else if ( rcid < 2*fNChanPerApaUV + 2*fNChanPerApaX ) return rcid-(2*fNChanPerApaUV+fNChanPerApaX);
+  return -1;
+}
 
 void
 wireana::WireAna::BuildPlaneViewROIMap(  std::vector<art::Ptr<recob::Wire>> &wires )
@@ -754,6 +848,7 @@ void wireana::WireAna::BuildInitialROIClusters()
       }
       for( auto idclus: idclusmap )
       {
+        if( idclus.first <= 0 ) continue; //clusterID <=0 --> not made
         plane_view_roicluster_map[p.first][v.first].push_back(idclus.second);
       }
       std::sort(plane_view_roicluster_map[p.first][v.first].begin(), plane_view_roicluster_map[p.first][v.first].end(),[]( auto &a, auto &b ){ return a.nWires > b.nWires; } );
@@ -775,7 +870,7 @@ void wireana::WireAna::BuildInitialROIClusters()
   //  }
   //}
 
-  if( fLogLevel >= 10 )
+  if( fLogLevel >= 9 )
   {
     for( const auto &p: plane_view_roicluster_map)
     {
@@ -1307,6 +1402,22 @@ wireana::WireAna::GetArrayFromWire( std::vector<art::Ptr<recob::Wire>> &wirelist
   
 }
 
+template <class T>
+std::vector<T> 
+wireana::WireAna::CombineArrays( std::vector<T> &u, std::vector<T> &v, std::vector<T> &z)
+{
+  std::vector< std::vector<T> > arr = {u,v,z};
+  std::vector< T > ret;
+  for( unsigned int i = 0; i < u.size(); i++ )
+  {
+    for( unsigned int v = 0; v < 3; v++ )
+    {
+      ret.push_back( arr[v][i] );
+    }
+  }
+  return ret;
+}
+
 std::vector<double> 
 wireana::WireAna::CombineTicks( const std::vector<double> &input, int channel_width, int nticks)
 {
@@ -1456,7 +1567,7 @@ wireana::WireAna::FillHistogram(std::vector<float> energies, std::vector<float>c
   for( unsigned int i = 0; i< partTypes.size(); i++ )
   {
     string hname = (hnamebase+partTypes[i]);
-    if( fLogLevel >= 10 ) std::cout<<hname<<std::endl;
+    if( fLogLevel >= 12 ) std::cout<<hname<<std::endl;
     TH2FMap[hname]->Fill(energies[i],charges[i]);
   }
 }
@@ -1510,11 +1621,13 @@ wireana::WireAna::GetMaskFromWire( std::vector<art::Ptr<recob::Wire>> &wirelist,
     for ( auto tdcide : ch->TDCIDEMap() )
     {
       short tdc = tdcide.first;
+      auto tdcidevec = tdcide.second;
+      std::sort( tdcidevec.begin(), tdcidevec.end(), [](auto &a, auto &b){ return a.energy > b.energy; } );
       int i = tdc -t0;
       if ( i>=0 && i < tick_width )
       {
         int index = dC+i*channel_width;
-        int trackID = tdcide.second[0].trackID;
+        int trackID = tdcidevec[0].trackID;
         int trackID_pdg = PIS->TrackIdToParticle_P( trackID )->PdgCode();
         trkid[index] = trackID;
         pdg[index] = trackID_pdg;
@@ -1531,50 +1644,59 @@ wireana::WireAna::GetMaskFromWire( std::vector<art::Ptr<recob::Wire>> &wirelist,
 }
 
 void 
-wireana::WireAna::CreateHDF5DataSet( art::Event const & evt, wireana::roicluster& cluster,  std::vector<art::Ptr<recob::Wire>>& wirelist, std::vector<art::Ptr<sim::SimChannel>>& chlist)
+wireana::WireAna::CreateHDF5DataSet( art::Event const & evt, wireana::matchedroicluster& mcluster,  std::vector<art::Ptr<recob::Wire>>& wirelist, std::vector<art::Ptr<sim::SimChannel>>& chlist)
 {
+
   int run= evt.run(); 
   int subrun = evt.subRun(); 
   int id = evt.id().event();
   int isMC = !evt.isRealData();
+  std::cout<<Form("CreateHDF5DataSet: %d %d %d",run,subrun,id)<<std::endl;
+  std::cout<<Form("     cluster size: %d", (int) mcluster.clusters.size())<<std::endl;
+  if (mcluster.clusters.size()!=3) return;
 
-  std::vector<int> eventid={ run, subrun, id, isMC, cluster.clusterID };
+  auto cu = mcluster.clusters[0];
+  auto cv = mcluster.clusters[1];
+  auto cz = mcluster.clusters[2];
+  std::vector<int> eventid={ run, subrun, id, isMC, cz.clusterID };
 
-  std::vector<float> neutrino_P={ (float) cluster.momentum_neutrino.Px(),
-                       (float) cluster.momentum_neutrino.Py(),
-                       (float) cluster.momentum_neutrino.Pz(),
-                       (float) cluster.momentum_neutrino.E() };
+  std::vector<float> neutrino_P={ (float) cz.momentum_neutrino.Px(),
+                       (float) cz.momentum_neutrino.Py(),
+                       (float) cz.momentum_neutrino.Pz(),
+                       (float) cz.momentum_neutrino.E() };
   //Find Interaction Vtx of the primary particle
   std::vector<float> int_vtx = {
-    (float) cluster.int_vtx.X(),
-    (float) cluster.int_vtx.Y(),
-    (float) cluster.int_vtx.Z(),
-    (float) cluster.int_vtx.T() }; 
-  std::vector<float> part_P={ (float) cluster.momentum_part.Px(),
-                   (float) cluster.momentum_part.Py(),
-                   (float) cluster.momentum_part.Pz(),
-                   (float) cluster.momentum_part.E() };
-  std::string label = cluster.label;
+    (float) cz.int_vtx.X(),
+    (float) cz.int_vtx.Y(),
+    (float) cz.int_vtx.Z(),
+    (float) cz.int_vtx.T() }; 
+  std::vector<float> part_P={ (float) cz.momentum_part.Px(),
+                   (float) cz.momentum_part.Py(),
+                   (float) cz.momentum_part.Pz(),
+                   (float) cz.momentum_part.E() };
+  std::string labelu = cu.label;
+  std::string labelv = cv.label;
+  std::string labelz = cz.label;
   int maxPart = 5;
-  int nPart = cluster.pdg_energy_list.size();
+  int nPart = cz.pdg_energy_list.size();
   std::vector<int> pdg(maxPart,-9999), trkid(maxPart,-9999);
   std::vector<float> energy(maxPart,-9999), charge(maxPart,-9999);
   for( int i = 0; i < nPart && i < maxPart; i++ )
   {
-    pdg[i] = cluster.pdg_energy_list[i].first;
-    trkid[i] = cluster.trkID_sum[i].first;
-    charge[i]= cluster.trkID_sum[i].second.first;
-    energy[i]= cluster.trkID_sum[i].second.second;
+    pdg[i] = cz.pdg_energy_list[i].first;
+    trkid[i] = cz.trkID_sum[i].first;
+    charge[i]= cz.trkID_sum[i].second.first;
+    energy[i]= cz.trkID_sum[i].second.second;
   }
 
 
-  short c0= cluster.abs_centroidChannel - image_channel_width/2. + 1;
-  short t0= cluster.abs_centroidIndex - image_tick_width/2.;
+  short c0= cz.abs_centroidChannel - image_channel_width/2. + 1;
+  short t0= cz.abs_centroidIndex - image_tick_width/2.;
 
   geo::Point_t intPoint(int_vtx[0],int_vtx[1], int_vtx[2]);
   auto TPCID = geo->PositionToTPCID(intPoint);
   int tpcid = TPCID.TPC;
-  int view = cluster.view;
+  int view = cz.view;
   std::vector<short> img_data={
     (short) image_channel_width, 
     (short) image_tick_width,
@@ -1583,26 +1705,39 @@ wireana::WireAna::CreateHDF5DataSet( art::Event const & evt, wireana::roicluster
   };
 
   std::vector<int> particle_counter={
-    cluster.n_nu,
-    cluster.n_lepton,
-    cluster.n_photon,
-    cluster.n_proton,
-    cluster.n_neutron,
-    cluster.n_meson,
-    cluster.n_nucleus
+    cz.n_nu,
+    cz.n_lepton,
+    cz.n_photon,
+    cz.n_proton,
+    cz.n_neutron,
+    cz.n_meson,
+    cz.n_nucleus
   };
 
-  std::vector<double> img = GetArrayFromWire( wirelist, cluster, image_channel_width, image_tick_width );
-  //for ( auto v: GetArrayFromWire( wirelist, cluster, image_channel_width, image_tick_width ) ) img.push_back(v);
-  auto masks = GetMaskFromWire( wirelist, cluster, image_channel_width, image_tick_width );
-  std::vector<short> mask_trkid = masks.first, mask_pdg=masks.second;
+  std::vector<double> img_z = GetArrayFromWire( wirelist, cz, image_channel_width, image_tick_width );
+  std::vector<double> img_u = GetArrayFromWire( wirelist, cu, image_channel_width, image_tick_width );
+  std::vector<double> img_v = GetArrayFromWire( wirelist, cv, image_channel_width, image_tick_width );
+  //for ( auto v: GetArrayFromWire( wirelist, cz, image_channel_width, image_tick_width ) ) img.push_back(v);
+  auto masks_u = GetMaskFromWire( wirelist, cu, image_channel_width, image_tick_width );
+  auto masks_v = GetMaskFromWire( wirelist, cv, image_channel_width, image_tick_width );
+  auto masks_z = GetMaskFromWire( wirelist, cz, image_channel_width, image_tick_width );
+  std::vector<short> mask_trkid_z = masks_z.first, mask_pdg_z=masks_z.second;
+  std::vector<short> mask_trkid_u = masks_u.first, mask_pdg_u=masks_u.second;
+  std::vector<short> mask_trkid_v = masks_v.first, mask_pdg_v=masks_v.second;
 
+  std::vector<double> img         = CombineArrays<double>(img_u, img_v, img_z);
+  std::vector<short>  mask_pdg    = CombineArrays<short>(mask_pdg_u, mask_pdg_v, mask_pdg_z);
+  std::vector<short>  mask_trkid  = CombineArrays<short>(mask_trkid_u, mask_trkid_v, mask_trkid_z);
+
+  std::cout<<Form("             images created")<<std::endl;
   image_tuple->insert(
       &eventid[0],
       &neutrino_P[0], 
       &int_vtx[0], 
       &part_P[0], 
-      label, 
+      labelu, 
+      labelv, 
+      labelz, 
       nPart,
       tpcid,
       view,
@@ -1616,12 +1751,249 @@ wireana::WireAna::CreateHDF5DataSet( art::Event const & evt, wireana::roicluster
       &mask_pdg[0],
       &mask_trkid[0]);
 
-  std::cout<<Form("CreateHDF5DataSet: %d %d %d",run,subrun,id)<<std::endl;
   std::cout<<Form("         position: %f %f %f",int_vtx[0],int_vtx[0],int_vtx[0])<<std::endl;
-  std::cout<<Form("        generator: %s",label.c_str())<<std::endl;
+  std::cout<<Form("        generator: %s",labelz.c_str())<<std::endl;
   std::cout<<Form("      maxwaveform: %f",*std::max_element(img.begin(),img.end()) )<<std::endl;
-  std::cout<<Form("            nROIs: %d",(int) cluster.ROIs.size() )<<std::endl;
+  std::cout<<Form("            nROIs: %d",(int) cz.ROIs.size() )<<std::endl;
 
 }
+
+void
+wireana::WireAna::CreateHDF5ApaView( 
+    art::Event const & evt, 
+    std::vector<art::Ptr<raw::RawDigit>>& rawList,
+    std::vector<art::Ptr<raw::RawDigit>>& noiselessRawList,
+    std::vector<art::Ptr<sim::SimChannel>>& chlist)
+{
+  int run= evt.run(); 
+  int subrun = evt.subRun(); 
+  int id = evt.id().event();
+  int isMC = !evt.isRealData();
+
+  std::vector<int> eventid={ run, subrun, id, isMC};
+
+  int  neutrino_tpc_id = -1;
+  std::vector<float> neutrino_P(4,0);
+  std::vector<float> lepton_P(4,0);
+  std::vector<float> int_vtx(4,0);
+  std::string int_type = "None";
+  int nu=0,electron=0,photon=0,neutron=0, proton=0, mesons=0, nuclei=0;
+
+
+  auto MCTruthList = PIS->MCTruthVector_Ps();
+  for (auto truth : MCTruthList )
+  {
+    if (truth->NeutrinoSet())
+    {
+      auto lepton_start_pos_4d = truth->GetNeutrino().Lepton().Position();
+      auto lepton_start_pos = lepton_start_pos_4d.Vect();
+      //set int_vtx
+      int_vtx = std::vector<float>({
+          (float) lepton_start_pos_4d.X(), 
+          (float) lepton_start_pos_4d.Y(),
+          (float) lepton_start_pos_4d.Z(), 
+          (float) lepton_start_pos_4d.T()});
+      //find tpcid
+      neutrino_tpc_id = (int) geo->PositionToTPCID( (geo::Point_t) lepton_start_pos ).TPC;
+      //std::cout<<neutrino_tpc_id<<std::endl;
+      //set neutrino P
+      auto lepton_p= truth->GetNeutrino().Lepton().Momentum();
+      auto neutrino_p = truth->GetNeutrino().Nu().Momentum();
+      neutrino_P = std::vector<float>({
+          (float) neutrino_p.Px(), 
+          (float) neutrino_p.Py(),
+          (float) neutrino_p.Pz(), 
+          (float) neutrino_p.E()});
+      lepton_P = std::vector<float>({
+          (float) lepton_p.Px(), 
+          (float) lepton_p.Py(),
+          (float) lepton_p.Pz(), 
+          (float) lepton_p.E()});
+    
+
+      std::set<int> pdgs; // a set of PDG involved 
+
+      for( int i = 0; i < truth->NParticles(); i++ )
+      {
+        int pdgcode =  truth->GetParticle(i).PdgCode() ;
+        unsigned int abs = (unsigned int) std::abs(pdgcode);
+        pdgs.insert( pdgcode );
+        if ( abs == 12 || abs == 14 || abs == 16 ) nu+=1;
+        else if ( abs == 11 || abs == 13 || abs == 15 ) electron+=1;
+        else if ( abs == 22 ) photon+=1;
+        else if ( abs == 2112 ) neutron+=1;
+        else if ( abs == 2212 ) proton+=1;
+        else if ( abs < 2000 ) mesons+=1;
+        else nuclei+=1;
+      }
+      //Set int type
+      bool isNC = ( ( pdgs.size() == 2 ) &&  truth->NParticles() == 4 );//NC involves only neutrino and lepton 
+      if (isNC) int_type="ES";
+      else  int_type = "CC";
+     //
+    }
+  }
+  vector<int> particle_counter = {nu,electron,photon,neutron, proton, mesons, nuclei};
+
+  plane_raw_map = GetRawMap( rawList );
+  plane_rawsig_map = GetRawMap( noiselessRawList );
+  GetMaskMap( chlist );
+
+  unsigned int nChannels = geo->Nchannels();
+  unsigned int nAPAs = nChannels/fNChanPerApa;
+  int pu = 0, pv=1,px1=2,px2=3;
+  //enum plane_view {pu,pv,pz1,pz2};
+  for( int iapa = 0; iapa < (int) nAPAs; iapa++ )
+  {
+
+    bool hasNeutrino = (neutrino_tpc_id == iapa*2) || (neutrino_tpc_id == iapa*2+1);
+    std::string this_int_type = (hasNeutrino)? int_type : "radiological";
+    if (fLogLevel >= 9)
+    {
+      std::cout<<Form("EventID: %d %d %d %d", eventid[0], eventid[1], eventid[2], eventid[3])<<std::endl;
+      std::cout<<Form("APA %d U View, %d elements",iapa, (int) plane_raw_map[iapa][pu].size())<<std::endl;
+      //for (auto v : plane_raw_map[iapa][pu] ) std::cout<<v<<"\t";
+      //std::cout<<std::endl;
+    }
+    apa_tuple_xuv->insert(
+        &eventid[0],
+        iapa,
+        neutrino_tpc_id,
+        this_int_type,
+        &neutrino_P[0], 
+        &int_vtx[0], 
+        &lepton_P[0], 
+        &particle_counter[0],
+        &(plane_raw_map[iapa][pu])[0],
+//        &(plane_rawsig_map[iapa][pu])[0],
+//        &(plane_energy_map[iapa][pu])[0],
+//        &(plane_charge_map[iapa][pu])[0],
+        &(plane_pdg_map[iapa][pu])[0],
+//        &plane_trkid_map[iapa][pu][0],
+        &plane_raw_map[iapa][pv][0],
+//        &plane_rawsig_map[iapa][pv][0],
+//        &plane_energy_map[iapa][pv][0],
+//        &plane_charge_map[iapa][pv][0],
+        &plane_pdg_map[iapa][pv][0],
+//        &plane_trkid_map[iapa][pv][0],
+        &plane_raw_map[iapa][px1][0],
+//        &plane_rawsig_map[iapa][px1][0],
+//        &plane_energy_map[iapa][px1][0],
+//        &plane_charge_map[iapa][px1][0],
+        &plane_pdg_map[iapa][px1][0],
+//        &plane_trkid_map[iapa][px1][0],
+        &plane_raw_map[iapa][px2][0],
+//        &plane_rawsig_map[iapa][px2][0],
+//        &plane_energy_map[iapa][px2][0],
+//        &plane_charge_map[iapa][px2][0],
+        &plane_pdg_map[iapa][px2][0]
+//        &plane_trkid_map[iapa][px2][0]
+        );
+
+
+
+  }
+
+  //pseudo code, we have 4 apas in this case, but we could have more depending on geometry
+  //data struct
+  //map<int, std::vector< std::vector<float> > >   plane id 
+  //loop through each digit
+  //  fill content to a vector
+  //  break if this digit is the last of u,v,x1,x2 plane
+  // 
+
+  //flush data to file
+  
+}
+
+
+std::map<int, std::vector<std::vector<float>>>
+wireana::WireAna::GetRawMap( std::vector<art::Ptr<raw::RawDigit>>& rawList )
+{
+  //unsigned int nChannels = geo->Nchannels();
+  //unsigned int nAPAs = nChannels/fNChanPerApa;
+  std::map<int, std::vector<std::vector<float>>> plane_raw_map;  //id:[u,v,x1,x2]
+  //Parsing Image
+  int apaID = -1;
+  for ( auto rawdigit: rawList )
+  {
+    raw::ChannelID_t chan = rawdigit->Channel();
+    bool newPlane = (  chan/fNChanPerApa != (unsigned int) apaID );
+    if (newPlane) 
+    {
+      apaID = chan/fNChanPerApa;
+      plane_raw_map[apaID] = std::vector< std::vector<float> >(4);
+    }
+    float pedestal = rawdigit->GetPedestal();
+    for( auto adc: rawdigit->ADCs() ) plane_raw_map[apaID][ GetAPAViewID(chan) ].push_back(adc-pedestal);
+  }
+  return plane_raw_map;
+}
+
+void wireana::WireAna::GetMaskMap( std::vector<art::Ptr<sim::SimChannel>>& chlist )
+{
+  plane_pdg_map.clear();
+  plane_trkid_map.clear();   //unsigned int nChannels = geo->Nchannels();
+  plane_energy_map.clear();  //unsigned int nAPAs = nChannels/fNChanPerApa;
+  plane_charge_map.clear();  //Parsing Image
+  int apaID = -1;
+  for ( auto ch: chlist)
+  {
+    raw::ChannelID_t chan = ch->Channel();
+    int view_id = GetAPAViewID(chan);
+    bool newPlane = (  chan/fNChanPerApa != (unsigned int) apaID );
+    if (newPlane) 
+    {
+      apaID = chan/fNChanPerApa;
+      for( auto size: vector<unsigned int>({fNChanPerApaUV, fNChanPerApaUV, fNChanPerApaX, fNChanPerApaX}) )
+      {
+        plane_pdg_map[apaID].push_back( std::vector<int>(size*fNTicksPerWire) );
+        plane_trkid_map[apaID].push_back( std::vector<int>(size*fNTicksPerWire) );
+        plane_energy_map[apaID].push_back( std::vector<float>(size*fNTicksPerWire) );
+        plane_charge_map[apaID].push_back( std::vector<float>(size*fNTicksPerWire) );
+      }
+    }
+
+    for( auto tdcideinfo: ch->TDCIDEMap()  )
+    {
+      int time=tdcideinfo.first;
+      if (time < 0 || time >= (int) fNTicksPerWire) continue;
+      int pos = GetAPAWirePos(chan)*fNTicksPerWire+time;
+      float energy=0,charge=0;
+      float max_charge=0;
+      //float max_energy;
+      int pdg=-99999,trkid=-99999;
+      int truthcode = -99999;
+      for (auto ide: tdcideinfo.second )
+      {
+        energy+=ide.energy;
+        charge+=ide.numElectrons;
+        if( ide.numElectrons> max_charge )
+        {
+          max_charge = ide.numElectrons;
+          trkid = (int) ide.trackID;
+          pdg =(int)  PIS->TrackIdToParticle_P( trkid )->PdgCode();
+          std::string truthlabel = trkid_to_label_map[trkid];
+          truthcode = PDGEncoder(pdg,TruthCode[truthlabel]);
+        }
+      }
+      if(fLogLevel > 10)
+      {
+        std::cout<<chan<<", "<<pos<<", "<<energy<<", "<<charge<<", "<<plane_pdg_map[apaID][view_id].size()<<std::endl;
+        std::cout<<"Relative: "<<GetAPAWirePos(chan)<<", "<<time<<std::endl;
+        std::cout<<"TruthCode"<<truthcode<<std::endl;
+      }
+      plane_pdg_map[apaID][view_id][pos] = truthcode;
+      plane_trkid_map[apaID][view_id][pos] = trkid;
+      plane_energy_map[apaID][view_id][pos] = energy;
+      plane_charge_map[apaID][view_id][pos] = charge;
+    }
+        
+  }
+}
+
+
+
+
 
 DEFINE_ART_MODULE(wireana::WireAna)

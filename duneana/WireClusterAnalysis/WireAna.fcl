@@ -13,6 +13,7 @@ standard_wireana:
   ChannelPerApa:                2560
   TickesPerWire:                6000
   DBSCAN_Eps:                   4.5
+  DBSCAN_MinPts:                3
   DBSCAN_Drift:                 1.6
   DBSCAN_Pitch:                 3.0
   IMAGE_CHANNEL_WIDTH:          13

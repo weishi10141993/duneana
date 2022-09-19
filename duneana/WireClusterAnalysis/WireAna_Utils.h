@@ -417,6 +417,9 @@ public:
     vector<int> calculateCluster(wireana::roi &r);
     int expandCluster(wireana::roi &r, int clusterID);
 
+    int run2();
+    int expandCluster2(wireana::roi &r, int clusterID);
+
     float calculateTickDistance( const wireana::roi& r1, const wireana::roi&r2 );
     float calculateDistance( const wireana::roi &r1, const wireana::roi &r2, float driftspeed=1.6, float pitch=3.0 );
 
@@ -450,29 +453,58 @@ wireana::WireAnaDBSCAN::run()
   {
     if ( iter->clusterID == UNCLASSIFIED )
     {
-      if ( expandCluster(*iter, clusterID) != FAILURE )
-      {
-        clusterID += 1;
-      }
+      clusterID += (expandCluster(*iter, clusterID) != FAILURE );
+//      if ( expandCluster(*iter, clusterID) != FAILURE )
+//      {
+//        clusterID += 1;
+//      }
     }
   }
   return 0;
+}
+
+int 
+wireana::WireAnaDBSCAN::run2()
+{
+  if (!m_ROIs) return -1;
+  int clusterID = 1;
+  std::vector<roi>::iterator iter;
+  for(iter = m_ROIs->begin(); iter != m_ROIs->end(); ++iter)
+  {
+    if ( iter->clusterID == UNCLASSIFIED )
+    {
+      clusterID += (expandCluster2(*iter, clusterID) != FAILURE );
+    }
+  }
+  return 0;
+}
+
+int 
+wireana::WireAnaDBSCAN::expandCluster2(wireana::roi &r, int clusterID){
+  std::map<roi*, int> roicount;
+  roicount[&r] = 1;
+
+  return roicount[&r];
 }
 
 
 std::vector<int> 
 wireana::WireAnaDBSCAN::calculateCluster(wireana::roi &r)
 {
-  int index = 0;
+  //int index = 0;
   std::vector<wireana::roi>::iterator iter;
   std::vector<int> clusterIndex;
   for( iter = m_ROIs->begin(); iter != m_ROIs->end(); ++iter)
   {
-    if ( calculateDistance(r, *iter, m_drift, m_pitch) <= m_epsilon )
-    {
-      clusterIndex.push_back(index);
-    }
-    index++;
+//    if (iter->clusterID == UNCLASSIFIED)//let's run over unclassified only
+//    {
+      if ( calculateDistance(r, *iter, m_drift, m_pitch) <= m_epsilon )
+      {
+        int index = iter - m_ROIs->begin(); //I should use the index in the m_ROIs vector right? 
+        clusterIndex.push_back(index);
+      }
+//    }
+    //index++;
   }
   return clusterIndex;
 }
@@ -493,14 +525,14 @@ wireana::WireAnaDBSCAN::expandCluster(wireana::roi &r, int clusterID)
     std::vector<int>::iterator iterSeeds;
     for( iterSeeds = clusterSeeds.begin(); iterSeeds != clusterSeeds.end(); ++iterSeeds)
     {
-      m_ROIs->at(*iterSeeds).clusterID = clusterID;
-      if (m_ROIs->at(*iterSeeds).channel == r.channel && m_ROIs->at(*iterSeeds).begin_index == r.begin_index && m_ROIs->at(*iterSeeds).end_index == r.end_index )
+      m_ROIs->at(*iterSeeds).clusterID = clusterID; //clusters in seed are assigned same id
+      if (m_ROIs->at(*iterSeeds).channel == r.channel && m_ROIs->at(*iterSeeds).begin_index == r.begin_index && m_ROIs->at(*iterSeeds).end_index == r.end_index )//same as input
       {
         indexCorePoint = index;
       }
       ++index;
     }
-    clusterSeeds.erase(clusterSeeds.begin()+indexCorePoint);
+    clusterSeeds.erase(clusterSeeds.begin()+indexCorePoint); //remove the input roi
 
     for( std::vector<int>::size_type i = 0, n = clusterSeeds.size(); i < n; ++i )
     {
@@ -547,15 +579,17 @@ wireana::WireAnaDBSCAN::calculateDistance( const roi &r1, const roi &r2, float d
 class wireana::ROIMatcher
 {
   public:
-  ROIMatcher(double dist = 20 /*mm*/){
+  ROIMatcher(double dist = 20 /*mm*/, double max_score=5 ){
     fGeometry = &*(art::ServiceHandle<geo::Geometry const>());
     SetMatchDistance(dist);
+    SetMaxScore(max_score);
   }
   ~ROIMatcher(){}
 
   void Reset();
   void SetData( PlaneViewROIClusterMap pvrm ) { m_planeViewRoiClusterMap = pvrm; }
   void SetMatchDistance( float dist = 20 /*mm*/ ) { m_minMatchDistance = dist ;}
+  void SetMaxScore(double score = 5 ){ m_maxScore = score; }
   void MatchROICluster();
   void CleanDuplicates( float delta = 0. );
   void SortROIClustersBySize();
@@ -574,12 +608,14 @@ class wireana::ROIMatcher
   double DeltaN(const roicluster& r1, const roicluster& r2);
   double DeltaCT( const wireana::roicluster& r1, const wireana::roicluster &r2 );
 
+
   geo::GeometryCore const* fGeometry;
 
   PlaneViewROIClusterMap m_planeViewRoiClusterMap;
   std::vector<matchedroicluster> m_matchedclusters; 
 
   double m_minMatchDistance;
+  double m_maxScore;
 };
 
 void 
@@ -743,14 +779,14 @@ wireana::ROIMatcher::MatchROICluster()
           double uz = DeltaCT(rcu,rcz);
           double vz = DeltaCT(rcv,rcz);
           double metric = pow( uv*uv+uz*uz+vz*vz, 0.5 )/pow(n_rcu+n_rcv+n_rcz,3);
+          if(metric > m_maxScore) continue;
           m_matchedclusters.push_back( matchedroicluster(planeid, metric, rcu, rcv, rcz ));
         }//loop z
       }//loop v
     }//loop u 
     std::sort(m_matchedclusters.begin(), m_matchedclusters.end(),
       [](const auto &a, const auto &b){ return a.metric < b.metric; });
-  }
-}
+  } }
 void 
 wireana::ROIMatcher::CleanDuplicates(float delta)
 {
@@ -786,5 +822,6 @@ wireana::ROIMatcher::CleanDuplicates(float delta)
   }
   std::cout<<"Final Matched Clusters Size: "<<m_matchedclusters.size()<<std::endl;
 }
+
 
 #endif

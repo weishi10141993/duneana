@@ -20,6 +20,7 @@
 
 #include "larsim/MCCheater/BackTrackerService.h"
 #include "larsim/MCCheater/ParticleInventoryService.h"
+#include "lardataobj/RawData/RawDigit.h"
 #include "lardataobj/RecoBase/Hit.h"
 #include "lardataobj/RecoBase/Wire.h"
 #include "lardataobj/RecoBase/TrackHitMeta.h"
@@ -49,6 +50,7 @@
 #include "hep_hpc/hdf5/File.hpp"
 #include "hep_hpc/hdf5/Column.hpp"
 #include "hep_hpc/hdf5/Ntuple.hpp"
+#include "hep_hpc/hdf5/PropertyList.hpp"
 #include "hep_hpc/hdf5/errorHandling.hpp"
 #include "hep_hpc/hdf5/make_column.hpp"
 #include "hep_hpc/hdf5/make_ntuple.hpp"
@@ -66,6 +68,7 @@
 
 //Others
 #define DEFAULT_VALUE -99999
+#define PDGDECIMAL 10000000
 
 namespace wireana {
 
@@ -79,6 +82,8 @@ namespace wireana {
     float, //int vtx, 4
     float, //part P, 4
     std::string,  //label, scalar
+    std::string,  //label, scalar
+    std::string,  //label, scalar
     int, //nPart, scalar
     int, //tpcid
     int, //view
@@ -88,9 +93,44 @@ namespace wireana {
     float, //energy, 5
     int, //n: e,gamma, p,n, meson, alpha, 6
     short, //image data (width,height,min_channel,min_time),4
-    Column<double,2>, //image 
-    Column<short,2>, //image pdg mask 
-    Column<short,2> > ; //image pid mask 
+    Column<double,3>, //image 
+    Column<short,3>, //image pdg mask 
+    Column<short,3> > ; //image pid mask 
+
+  using apaview_xuv_t = Ntuple<
+    int, //event id , 4,run,subrun,event, isMC,
+    int, //apaid
+    int, //neutrinotpcid
+    std::string, //intType
+    float, //neutrino P, 4
+    float, //int vtx, 4
+    float, //part P, 4
+    int, //n: nu, e,gamma, p,n, meson, alpha, 7
+    Column<float,2>, //image 1
+//    Column<float,2>, //image 1 sig
+//    Column<float,2>, //image 1 energy
+//    Column<float,2>, //image 1 charge
+    Column<int,2>, //image pdg mask 
+//    Column<int,2>, //image pid mask 
+    Column<float,2>, //image 2
+//    Column<float,2>, //image 2 sig
+//    Column<float,2>, //image 2 energy
+//    Column<float,2>, //image 2 charge
+    Column<int,2>, //image pdg mask 
+//    Column<int,2>,//image pid mask 
+    Column<float,2>, //image 3
+//    Column<float,2>, //image 3 sig
+//    Column<float,2>, //image 3 energy
+//    Column<float,2>, //image 3 charge
+    Column<int,2>, //image pdg mask 
+//    Column<int,2>,//image pid mask 
+    Column<float,2>,  //image 4
+//    Column<float,2>, //image 4 sig
+//    Column<float,2>, //image 4 energy
+//    Column<float,2>, //image 4 charge
+    Column<int,2> //image pdg mask 
+//    Column<int,2>  //image pid mask 
+    >;
 
 
   struct DataBlock_Truth
@@ -170,7 +210,7 @@ private:
   /////////////////////////////////////////////
   // Geometry Options && Tool options
   int fNPlanes;
-  int fNChanPerApa;
+  unsigned int fNChanPerApa, fNChanPerApaX, fNChanPerApaUV;
   unsigned int fNTicksPerWire;
   int fChannelDistance;
   int fTickDistance;
@@ -180,8 +220,10 @@ private:
   float fEps;
   float fDrift;
   float fPitch;
-
   float fDeltaMetric;
+
+  float fMatcherDist;
+  float fMatcherScore;
 
   unsigned int image_channel_width;
   unsigned int image_tick_width;
@@ -204,6 +246,7 @@ private:
   int fLogLevel;
   bool fDoAssns;
   bool fMakeCluster;
+  bool fTagTruth;
 
 
 
@@ -213,6 +256,9 @@ private:
   void SortWirePtrByChannel( std::vector<art::Ptr<T>> &vec, bool increasing );
   std::vector<wireana::wirecluster> BuildInitialClusters( std::vector<art::Ptr<recob::Wire>> &vec, int dW, int dTick );
 
+  int GetAPAID( int channel );
+  int GetAPAViewID( int channel );
+  int GetAPAWirePos( int channel );
 
   void BuildPlaneViewROIMap(  std::vector<art::Ptr<recob::Wire>> &wires );
   void BuildInitialROIClusters();
@@ -277,8 +323,13 @@ private:
   const art::InputTag fSimChannelLabel;
   const art::InputTag fSimulationProducerLabel;
 
+
+  art::InputTag fRawProducerLabel; 
+  art::InputTag fNoiselessRawProducerLabel; 
+
   std::string fDumpFileName;
   std::string fHDF5DumpFileName;
+  std::string fHDF5DumpFileNameAPA;
   int fDumpMaxRow;
   int fDumpNClusters;
 
@@ -322,6 +373,8 @@ private:
   std::vector<double> GetArrayFromWire( std::vector<art::Ptr<recob::Wire>> &wirelist, wireana::roicluster &cluster, int channel_width, int new_tickwidth );
   std::vector<double> CombineTicks( const std::vector<double> &input, int channel_width, int nticks);
   std::vector<double> ScaleArray( const std::vector<double> &input, double min, double max );
+  template <class T> 
+    std::vector<T> CombineArrays( std::vector<T> &u, std::vector<T> &v, std::vector<T> &z); 
   int CalculateIndex( int c, int t, int c_width, int t_width );
 
   std::pair<std::vector<short>,std::vector<short>>
@@ -335,10 +388,33 @@ private:
 
   /////////////////////////////////////////////
   // HDF5 Create
-  void CreateHDF5DataSet( art::Event const & evt, wireana::roicluster& cluster,  std::vector<art::Ptr<recob::Wire>>& wirelist, std::vector<art::Ptr<sim::SimChannel>>& chlist) ;
+  void CreateHDF5DataSet( art::Event const & evt, wireana::matchedroicluster &mcluster,  std::vector<art::Ptr<recob::Wire>>& wirelist, std::vector<art::Ptr<sim::SimChannel>>& chlist) ;
+
+
+  std::map<int, std::vector<std::vector<float>>>
+    GetRawMap( std::vector<art::Ptr<raw::RawDigit>>& rawList );
+
+  void GetMaskMap( std::vector<art::Ptr<sim::SimChannel>>& chlist );
+
+  void CreateHDF5ApaView( 
+      art::Event const & evt, 
+      std::vector<art::Ptr<raw::RawDigit>>& rawList,
+      std::vector<art::Ptr<raw::RawDigit>>& noiselessRawList,
+      std::vector<art::Ptr<sim::SimChannel>>& chlist);
+  std::map<int, std::vector<std::vector<float>>> plane_raw_map;
+  std::map<int, std::vector<std::vector<float>>> plane_rawsig_map;
+  std::map<int, std::vector<std::vector<float>>> plane_energy_map;
+  std::map<int, std::vector<std::vector<float>>> plane_charge_map;
+  std::map<int, std::vector<std::vector<int>>> plane_pdg_map;
+  std::map<int, std::vector<std::vector<int>>> plane_trkid_map;
 
   File hdffile;
+  File hdffileAPA;
   imager_t *image_tuple;
+  apaview_xuv_t *apa_tuple_xuv;
+  //apaview_t *apa_tuple_x;
+  //apaview_t *apa_tuple_u;
+  //apaview_t *apa_tuple_v;
   //imager_t image_tuple;
 
   //unsigned int -- event id,4
@@ -347,6 +423,14 @@ private:
   int fApaNColums;
   int fApaNRows;
 
+  int fBuffSize;
+
+  /////////////////////////////////////////////
+  // PDG parser codes
+  int PDGReducer( int pdg ) { return pdg%PDGDECIMAL; }
+  int PDGEncoder( int pdg, int gencode ){ return pdg%PDGDECIMAL + gencode*PDGDECIMAL; }
+
+  std::map<std::string, int> TruthCode;
 
 };
 
