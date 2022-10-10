@@ -13,6 +13,7 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   larsim::MCCheater_PhotonBackTrackerService_service
   larsim::Simulation nug4::ParticleNavigation lardataobj_Simulation
   lardata::ArtDataHelper
+  larpandora::LArPandoraInterface
   nusimdata::SimulationBase	
   ART_FRAMEWORK_CORE
   ART_FRAMEWORK_PRINCIPAL

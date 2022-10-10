@@ -18,7 +18,7 @@ BEGIN_PROLOG
 
 absrunningsumtppass1: {
    module_type: "AbsRunningSumTPFinder"
-   InputTag: "simwire"
+   InputTag: "tpcrawdecoder:daq"
    finderCol: 
    {  
      tool_type: "AbsRunningSumTPFinderPass1"
@@ -36,7 +36,6 @@ END_PROLOG
 process_name: PrimSim
 
 services: @local::dunefd_simulation_services
-services.TFileService: { fileName: "deleteme.root" }
 services.TimeTracker:       {}
 services.MemoryTracker:         { } # default is one
 services.RandomNumberGenerator: {} #ART native random number generator

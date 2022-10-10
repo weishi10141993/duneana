@@ -14,9 +14,10 @@
 BEGIN_PROLOG
 trigprim_ana: {
    @table::standard_daqtpfinderdump
-   OutputFile:  "RSHF_vdcb_collection_tps.txt"
-   OutputFile1: "RSHF_vdcb_induction_tps.txt"
-   VDCBgeo:     true
+   RawDigitLabel: "tpcrawdecoder:daq"
+   OutputFile:    "RSHF_vdcb_collection_tps.txt"
+   OutputFile1:   "RSHF_vdcb_induction_tps.txt"
+   VDCBgeo:        true
 }
 END_PROLOG
 #include "standard_detsim_dune10kt_1x2x6.fcl"
@@ -25,7 +26,6 @@ END_PROLOG
 process_name: PrimSim
 
 services: @local::dunefd_simulation_services
-services.TFileService: { fileName: "delete_me.root" }
 services.TimeTracker:       {}
 services.MemoryTracker:         { } # default is one
 services.RandomNumberGenerator: {} #ART native random number generator
@@ -43,20 +43,8 @@ source: {
 # Modules are grouped by type.
 physics: {
    producers: {
-      simwire: {
-         module_type: "SimWireDUNE"
-         SimChannelLabel: "largeant"
-         NoiseOn: true
-         PedestalOn: true
-         DistortOn: false
-         SuppressOn: false
-         KeepEmptyChannels: true
-         AdcSimulator:      "adcsim_ideal"
-         UseRawDigitInput: true
-         RawDigitInputLabel: "daq"
-      }
 
-      # Our HF chain for trigger primitive generation
+      #Define HF chain which does the trigger primitive generation
       #use absrunningsumtppass1 for HF with standard geometries and raw digit read-in
       #use absrunningsumtppass2 for HF with VDCB setup
       trigprim: @local::absrunningsumtppass2
@@ -72,7 +60,7 @@ physics: {
      
    }
 
-   simulate: [rns, simwire, trigprim]
+   simulate: [rns,  trigprim]
 
    ana     : [anatrigprim]
    
@@ -89,8 +77,6 @@ physics.producers.trigprim.finderInd.Threshold: 2000
 # Set the HitLabel to make sure each DaqAnaSim reads hits from its
 #  corresponding TriggerPrimitiveFinder
 physics.analyzers.anatrigprim.HitLabel: "trigprim"
-physics.analyzers.anatrigprim.RawDigitLabel: "tpcrawdecoder:daq"
-
 
 # Modify geometry for VDCB
 services.Geometry.GDML: "dunevdcb1_refactored.gdml"
@@ -103,11 +89,7 @@ services.Geometry.ROOT: "dunevdcb1_refactored.gdml"
 services.DetectorPropertiesService.TimeOffsetY: 0
 
 # Services things
-services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC"
-
-# physics things
-physics.producers.simwire.SimChannelLabel: "elecDrift"
-physics.producers.simwire.RawDigitInputLabel: "tpcrawdecoder:daq"
+#services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC"
 
 # =====================================================================
 # You probably won't need to change anything below here
@@ -115,19 +97,3 @@ physics.producers.simwire.RawDigitInputLabel: "tpcrawdecoder:daq"
 # Shut up the backtracker
 services.message.destinations.LogStandardOut.categories.BackTracker.limit: 0
 services.message.destinations.LogStandardError.categories.BackTracker.limit: 0
-
-# If you want to have the mf::LogDebug() messages, uncomment the following:
-# services.message.destinations.LogStandardOut.threshold:"DEBUG"
-# services.message.destinations.LogStandardOut.categories.SNAna_module.limit:-1
-# services.message.destinations.LogStandardOut.categories.default.limit:0
-
-
-# DetSim services. These are used by SimWire to add noise and
-# pedestals to the incoming (noise-free) waveforms
-services.SimChannelExtractService: @local::scxgeneric
-services.ChannelNoiseService:      @local::chnoiseold
-services.PedestalAdditionService:  @local::padprovided
-services.AdcDistortService:        @local::stuckbits
-services.AdcSuppressService:       @local::zsnone
-services.AdcCompressService:       @local::cmpreplace
-services.DetPedestalService:       @local::dune_fixedpeds
