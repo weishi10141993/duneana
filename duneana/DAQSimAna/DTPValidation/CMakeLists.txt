@@ -1,10 +1,4 @@
-include(MakeDuneToolBuilder)
-add_subdirectory(SNAnaClustering)
-add_subdirectory(RunningSumHitFinder)
-add_subdirectory(AbsRunningSumHitFinder)
-add_subdirectory(DTPValidation)
-
-make_dune_tool_builder(dunecore::TriggerPrimitiveFinderTool)
+add_subdirectory(SWHitFinding)
 
 art_make( BASENAME_ONLY MODULE_LIBRARIES
   dunepdlegacy_Services_ChannelMap_PdspChannelMapService_service
@@ -20,6 +14,7 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   larsim::MCCheater_PhotonBackTrackerService_service
   larsim::Simulation nug4::ParticleNavigation lardataobj_Simulation
   lardata::ArtDataHelper
+  larpandora::LArPandoraInterface	
   nusimdata::SimulationBase	
   ART_FRAMEWORK_CORE
   ART_FRAMEWORK_PRINCIPAL
@@ -33,26 +28,8 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
   messagefacility::MF_MessageLogger
   cetlib::cetlib cetlib_except
   ROOT_BASIC_LIB_LIST
-  EXCLUDE read_packed.cxx TriggerPrimitiveFinderPass1_tool.cc TriggerPrimitiveFinderPass2_tool.cc TriggerPrimitiveFinderTemplate_tool.cc
+  EXCLUDE CompareSWFWHits_module.cc
   )
-
-cet_build_plugin(TriggerPrimitiveFinderPass1 art::tool
-  fhiclcpp cetlib::cetlib cetlib_except
-  
-)
-
-cet_build_plugin(TriggerPrimitiveFinderPass2 art::tool
-  fhiclcpp cetlib::cetlib cetlib_except
-  
-  duneana_DAQSimAna_TriggerPrimitiveFinderPass1_tool
-)
-
-cet_build_plugin(TriggerPrimitiveFinderTemplate art::tool
-  fhiclcpp cetlib::cetlib cetlib_except
-  
-)
-
-cet_make_exec(read_packed SOURCE read_packed.cxx)
 
 install_fhicl()
 install_headers()

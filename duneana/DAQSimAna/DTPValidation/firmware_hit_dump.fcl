@@ -1,0 +1,51 @@
+#include "standard_detsim_dune10kt_1x2x6.fcl"
+
+process_name: TPDump
+
+
+services:
+{
+   @table::dunefd_services
+   #TFileService:          { fileName: "deleteme.root" }
+   TimeTracker:           {}
+   MemoryTracker:         {} # default is one
+   RandomNumberGenerator: {} #ART native random number generator
+  // FileCatalogMetadata:   @local::art_file_catalog_mc
+   NuRandomService:       @local::per_event_NuRandomService  # seedservice.fcl
+}
+
+source: {
+  module_type:  EmptyEvent #do not read in from a ROOT file, since we're reading in non-MC data 
+  maxEvents:    1          #Max number of events to create
+  firstRun:     1          #run number to use for this file 
+  firstEvent:   1          #number of first event in the file 
+}
+
+
+physics:
+{
+   producers: {
+      convertedtps: {
+         module_type:  "HitConverter"
+	 RawInputFile: "test/fw_adcs_16211_link11_f1.csv" #df file containing the raw ADCs
+	 TPInputFile:  "test/fw_tps_16211_link11_f1.csv" #df file containing the firmware TPs
+      }
+      rns:            { module_type: "RandomNumberSaver" }
+   }
+   
+   analyzers:
+   {
+      tpdump: {
+         module_type: HitDump
+         OutputFile: "FirmwareHitsOut.txt"
+         HitLabel: "convertedtps"
+      }
+   }
+   
+   ana: [ tpdump ]
+   sim: [ rns, convertedtps ]
+   trigger_paths: [ sim ]
+   end_paths: [ ana ] 
+   
+}
+

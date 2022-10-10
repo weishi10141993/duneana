@@ -1,0 +1,13 @@
+BEGIN_PROLOG
+
+runsoftwarehitfinder: 
+{
+ module_type: "SWTriggerPrimitiveFinder" 
+ InputTag:    "convertedrds" 
+ finder: 
+  {
+   tool_type: "SWTriggerPrimitiveFinderPass1" 
+   PedInitialValue: 1000
+  }
+}
+END_PROLOG
