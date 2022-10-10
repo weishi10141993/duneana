@@ -3,11 +3,22 @@ BEGIN_PROLOG
 taggedprimdump_ana:
 {
   module_type:		TaggedHitDump
-  #====================
-  HitLabel:		"hitfd" 	# string for the process that made the reco hits
-  RawDigitLabel:	"daq"
-  OutputFile:           "collection_tps.txt"
-  OutputFile1:          "induction_tps.txt"
+  GenLabel:       "generator"      
+  GEANT4Label:    "largeant"    
+  SimChanLabel:   "largeant"    
+  HitLabel:       "hitfd"       #String for the process that made the reco hits
+  RawDigitLabel:  "daq"         #String for the process that made the raw digits
+  APALabel:       "apaGen"      # The label for the process which produced APA events
+  CPALabel:       "cpaGen"      # The label for the process which produced CPA events
+  Argon39Label:   "ar39Gen"     # The label for the process which produced Argon 39 events
+  NeutronLabel:   "cNeutronGen" # The label for the process which produced Neutron events
+  KryptonLabel:   "kr85Gen"     # The label for the process which produced Krypton events
+  PoloniumLabel:  "po210Gen"    # The label for the process which produced Polonium events
+  RadonLabel:     "rn222Gen"    # The label for the process which produced Radon events
+  Argon42Label:   "ar42Gen"     # The label for the process which produced Argon 42 events
+
+  OutputFile:     "collection_tps.txt"     
+  OutputFile1:    "induction_tps.txt"  
 }
 
 END_PROLOG
