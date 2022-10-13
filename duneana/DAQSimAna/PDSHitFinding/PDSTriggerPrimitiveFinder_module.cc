@@ -61,6 +61,8 @@ PDSTriggerPrimitiveFinder::PDSTriggerPrimitiveFinder(fhicl::ParameterSet const &
 
 void PDSTriggerPrimitiveFinder::produce(art::Event & e)
 {
+    // ===== CODE WE NEED TO CHANGE IS HERE =====>
+
     auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(m_inputTag);
     auto& digits_in =*digits_handle;
 
@@ -80,6 +82,8 @@ void PDSTriggerPrimitiveFinder::produce(art::Event & e)
 
     // Pass the full list of collection channels to the hit finding algorithm
     std::vector<PDSTriggerPrimitiveFinderTool::Hit> hits=m_finder->findHits(channel_numbers, collection_samples);
+
+    // TO HERE =========================================================
 
     // Loop over the returned trigger primitives and turn them into recob::Hits
     recob::HitCollectionCreator hcol(e, false /* doWireAssns */, true /* doRawDigitAssns */);
