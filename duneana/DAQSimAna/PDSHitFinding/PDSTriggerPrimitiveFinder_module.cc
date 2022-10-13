@@ -1,6 +1,5 @@
 ////////////////////////////////////////////////////////////////////////
 // Class:       PDSTriggerPrimitiveFinder
-// Plugin Type: producer (art v2_10_03)
 // File:        PDSTriggerPrimitiveFinder_module.cc
 //
 // Generated at Wed Oct 12 2022 by Charlie Batchelor using the ol' copy
@@ -20,6 +19,7 @@
 
 #include "larcore/Geometry/Geometry.h"
 #include "lardata/ArtDataHelper/HitCreator.h"
+#include "lardataobj/RawData/RawDigit.h"
 
 #include "duneana/DAQSimAna/PDSHitFinding/PDSTriggerPrimitiveFinderTool.h"
 
@@ -46,7 +46,7 @@ public:
 private:
     // The module name of the raw digits we're reading in
     std::string m_inputTag;
-    // The actual Service that's doing the trigger primitive finding
+    // The actual Service that's doing the trigger primitive finding.
     std::unique_ptr<PDSTriggerPrimitiveFinderTool> m_finder;
 };
 

@@ -18,7 +18,7 @@ trigprimpass1: {
    module_type: "PDSTriggerPrimitiveFinder"
    #run through the abs module to get induction hits as well for the standard HF chain
    #module_type: "AbsRunningSumTPFinder"         
-   InputTag: "simwire"
+   InputTag: "tpcrawdecoder:daq"
    finder:    {
      tool_type: "PDSTriggerPrimitiveFinderPass1"
    }
@@ -87,8 +87,6 @@ services.AdcCompressService:       @local::cmpreplace
 services.DetPedestalService:       @local::dune_fixedpeds
 
 # Modify the threshold for the trigger primitve finder 
-physics.producers.trigprim1.finderCol.Threshold: 1300
-physics.producers.trigprim1.finderInd.Threshold: 1400
 
 # Set the HitLabel to make sure each DaqAnaSim reads hits from its
 #  corresponding TriggerPrimitiveFinder
@@ -105,6 +103,3 @@ services.Geometry.ROOT: "dunevdcb1_refactored.gdml"
 # Plane View Y Error:
 services.DetectorPropertiesService.TimeOffsetY: 0
 
-# Shut up the backtracker
-services.message.destinations.LogStandardOut.categories.BackTracker.limit: 0
-services.message.destinations.LogStandardError.categories.BackTracker.limit: 0
