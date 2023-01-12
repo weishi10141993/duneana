@@ -58,6 +58,7 @@
 ///#include "nusimdata/SimulationBase/MCParticle.h"
 
 
+
 #include "larcore/CoreUtils/ServiceUtil.h"
 
 ///#include "tools/IHitEfficiencyHistogramTool.h"
@@ -75,6 +76,8 @@
 #include <iostream>
 #include <fstream>
 #include <numeric>
+
+
 
 // ------------------------------------------------------------------------------------------
 
@@ -202,7 +205,7 @@ private:
       1st element of array = vector of TH1 for induction 1, etc.
     ...
  * ---- */
-   std::array<std::vector<TH1F*>, 3> StoreWireRegionsOfTracksOfInterest(track_of_interest &, std::vector<recob::Wire>, std::string);
+   std::array<std::vector<std::tuple<TH1F*, bool> >, 3> StoreWireRegionsOfTracksOfInterest(track_of_interest &, std::vector<recob::Wire>, std::string);
 
     /* ---
     Write the content of input recob::Wire object associated to track_of_oiniterest into a histogram, and updates vector of TH1F (centered waveform)
@@ -215,7 +218,7 @@ private:
 	* art::TFileDirectory : directory to write histogram in current root file
       No return
  * ---- */
-   void StoreWireRegionOfInterestAsHistogram(track_of_interest &, size_t, recob::Wire, std::vector<TH1F*>&, art::TFileDirectory);
+   void StoreWireRegionOfInterestAsHistogram(track_of_interest &, size_t, recob::Wire, std::vector<std::tuple<TH1F*, bool> >&, art::TFileDirectory);
 
 
     /* ---
@@ -233,8 +236,27 @@ private:
       No return
     ...
  * ---- */
-  void PerformCoherentAdditionOfWaveforms(track_of_interest, std::array<std::vector<TH1F*>, 3>, std::string);
+  void PerformCoherentAdditionOfWaveforms(track_of_interest, std::array<std::vector<std::tuple<TH1F*, bool> >, 3>, std::string);
 
+
+    /* ---
+	Add description ....
+   * ---- */
+  bool FlagCollectionWaveform(TH1F&, int);
+
+    /* ---
+	Add description ....
+   * ---- */
+  bool FlagInductionWaveform(TH1F&, int);
+
+    /* ---
+	Add description ....
+   * ---- */
+  bool IsMonotonous( std::vector<std::tuple<float, float> > meanDev); 
+
+
+    // geometry filename
+    std::string strGDML;
 
     // The variables that will go into the n-tuple.
     // NTuple + variables
@@ -260,10 +282,8 @@ private:
     std::string fWireLabel; // label associated to recob::Wire objects, i.e rawdigits with coherent noise removed
     double fTrackMinExtension; // length in cm, projected along X ccoordinate, any track should have to be considered in the analysis.
     std::vector<double> fThetaRange; // [deg] theta_min and theta_max (X is the referent axis). Tracks are kept if theta_min < theta < theta_max
+    float fIndSignalTh; // threshold in ADC units induction signals must pass
 
-    // Some internal variables needed globally
-    int mRiseWindowSize = 25; // for waveforms signals : time window desired in tick unit before the max of the waveform 
-    int mDescendWindowSize = 50; // for waveforms signals : time window desired in tick unit after the max of the waveform
     // Access ART's TFileService, which will handle creating and writing
     // histograms and n-tuples for us.
     art::ServiceHandle<art::TFileService> tfs;
@@ -308,12 +328,14 @@ private:
   {
 
    fGeometry = lar::providerFrom<geo::Geometry>();
-   std::string strGDML = fGeometry->GDMLFile();
+//   std::string strGDML = fGeometry->GDMLFile();
+   strGDML = fGeometry->GDMLFile();
    // add an exception if someone tries to run this module with
    // a geometry different from vertical drift coldbox CRP1
-   if (strGDML.find("vdcb1") == strGDML.npos)
+   if (strGDML.find("vdcb1") == strGDML.npos && strGDML.find("crpcb2") == strGDML.npos)
    {
-   throw cet::exception("SignalShapeAna") << "You're apparently trying to run this module with a geometry different from VD coldbox crp1. It is a risky attempt since this module will surely fail for any other geometry." << std::endl;
+   std::cout << "Geometry file : " << strGDML << std::endl;
+   throw cet::exception("SignalShapeAna") << "You're apparently trying to run this module with a geometry different from VD coldbox crp1, crp2 or crp3. It is a risky attempt since this module will surely fail for any other geometry." << std::endl;
    }
 
 
@@ -378,6 +400,8 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
     fWireLabel 		 = p.get<std::string>("WireLabel");
     fTrackMinExtension	 = p.get<double>("TrackMinExtension");
     fThetaRange		 = p.get<std::vector<double> >("ThetaRange");
+    fIndSignalTh	 = p.get<float>("InductionSignalThreshold"); 
+    // threshold in ADC units induction signals must pass
 
     if (fThetaRange.size() != 2) throw cet::exception("SignalShapeAna") << "fThetaRange range must be 2 (thetamin, thetamax). Current size = " << fThetaRange.size() << std::endl;
 
@@ -390,6 +414,10 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
   void SignalShapeAna::analyze(const art::Event& event)
   {
+
+//fGeometry->Print(std::cout);
+//return;
+
     // init a vector of track_of_interest objects
     std::vector<track_of_interest> fvec_Toi;
 
@@ -412,6 +440,8 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
    // Retrieve recob::Track and art::Assns objects
    auto const& pandoraTrack = *event.getValidHandle< std::vector<recob::Track> >(tag_pandoraTrack);
+
+// if (event.id().event() != 25) return;
 
    // Get if data or sim
    // I think for the moment the module is fine, but I keep track of the call in case I need it at some point
@@ -520,24 +550,25 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 
 	// make some printing regarding the track of interest found int the current event
 	if (fVerbose){
+        std::string name = "SignalShapeAna::analyze:: ";
 	  // check track of interest
 	  for (size_t k = 0; k < fvec_Toi.size(); k++)
 	    {
-	    std::cout << "--- track of interest #" << k+1 << " --- \n";
-	    std::cout << "\t--> run " << fvec_Toi.at(k).run << "; subrun " << fvec_Toi.at(k).subrun << "; event " << fvec_Toi.at(k).event << "\n"; 
-	    std::cout << "\twire domain : \n";
+	    std::cout << name << "  --- track of interest #" << k+1 << " --- \n";
+	    std::cout << name << "\t--> run " << fvec_Toi.at(k).run << "; subrun " << fvec_Toi.at(k).subrun << "; event " << fvec_Toi.at(k).event << "\n"; 
+	    std::cout << name << "\twire domain : \n";
 	    for (size_t i_plane = 0; i_plane < 3; i_plane++)
 	      {
-	      std::cout << "\tview plane #" << i_plane << "\n";
+	      std::cout << name << "\tview plane #" << i_plane << "\n";
 	      for (auto& it_wmin: fvec_Toi.at(k).wiremin.at(i_plane)){
 	        size_t vtpc = it_wmin.first;
-	        std::cout << "\t\t\tvtpc " << vtpc;
+	        std::cout << name << "\t\t\tvtpc " << vtpc;
 	        std::cout << " w in [ " << it_wmin.second << " --> " << fvec_Toi.at(k).wiremax.at(i_plane)[vtpc] << " ]\n";
       	        }
 	      } // end loop over view planes
-	    std::cout << "\t tick domain : " << fvec_Toi.at(k).tickmin << " --> " << fvec_Toi.at(k).tickmax << "\n";
+	    std::cout << name << "\t tick domain : " << fvec_Toi.at(k).tickmin << " --> " << fvec_Toi.at(k).tickmax << "\n";
 //	    std::cout << "\t reco info : thetaX = " << fvec_Toi.at(k).theta << "° ; phiX = " << fvec_Toi.at(k).phi << "° ; length = " << fvec_Toi.at(k).length << "\n";
-	    std::cout << "-----------------------" << std::endl;
+	    std::cout << name << "-----------------------" << std::endl;
 	  } // end for
 	} // end if Verbose
 
@@ -560,13 +591,15 @@ fhicl::Sequence<double> _ThetaRange  { fhicl::Name("ThetaRange" ), fhicl::Commen
 	  // skip track of interest too close from time window boundaries
 	  if (fvec_Toi[kToi].tickmin < 50 || fvec_Toi[kToi].tickmax > (Wires.at(0).NSignal() - 50) ) continue;
 
-    	  // init the directory direction to store the wires
+    	  // init the directory where to store the wires
 //    	  size_t mEvent = fvec_Toi.at(kToi).event; 
-      	  std::string strdir = "event" + std::to_string(fEvent) + "_" + std::to_string(fvec_Toi.at(kToi).trackNumber);
+      	  std::string strdir = "event" + std::to_string(fvec_Toi.at(kToi).event) + "_" + std::to_string(fvec_Toi.at(kToi).trackNumber);
+//std::cout << "Flag:: strdir = " << strdir << std::endl; 
 //    	  if (NtrackperEvent.find(fEvent) != NtrackperEvent.end()) strdir += "_" + std::to_string(NtrackperEvent.at(fEvent));
 	  NtrackperEvent[fEvent]++;
 
-	  std::array<std::vector<TH1F*>, 3> mCenteredWaveforms = StoreWireRegionsOfTracksOfInterest(fvec_Toi[kToi], Wires, strdir);
+//	  std::array<std::vector<TH1F*>, 3> mCenteredWaveforms = StoreWireRegionsOfTracksOfInterest(fvec_Toi[kToi], Wires, strdir);
+	  std::array<std::vector<std::tuple<TH1F*, bool> >, 3> mCenteredWaveforms = StoreWireRegionsOfTracksOfInterest(fvec_Toi[kToi], Wires, strdir);
 
 	if (fVerbose) std::cout << "--- track of interest #" << kToi+1 << " --- \n";
 	  PerformCoherentAdditionOfWaveforms(fvec_Toi[kToi], mCenteredWaveforms, strdir);
@@ -793,7 +826,7 @@ if (plane != 0 && plane !=1 && plane !=2) throw cet::exception("SignalShapeAna")
 // --------------------------------------------------------------------------------------------------------------------------
 
 
-std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInterest(track_of_interest & mToI, std::vector<recob::Wire> mWires, std::string mainwritedir)
+std::array<std::vector<std::tuple<TH1F*, bool> >, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInterest(track_of_interest & mToI, std::vector<recob::Wire> mWires, std::string mainwritedir)
   {
 
   // update tick window to make it a bit larger
@@ -803,12 +836,14 @@ std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInte
   if (mToI.tickmax > (float) mWires.at(0).NSignal()) mToI.tickmax = mWires.at(0).NSignal() - 1; 
 
   // output vector declaration
-  std::array<std::vector<TH1F*>, 3> arrayvecCenteredWaveforms; // vec of histograms each containing centered waveforms
+  std::array<std::vector<std::tuple<TH1F*, bool> >, 3> arrayvecCenteredWaveforms; // vec of histograms each containing centered waveforms
 
+std::string t = "Flag:: ";
 
   // loop over plane views
   for (int plane = 0; plane < 3; plane++)
     {
+//std::cout << t << "plane view " << plane << std::endl;
     std::string writedir = mainwritedir;
     if (plane == 0) writedir += "/ind1";
     else if (plane == 1) writedir += "/ind2";
@@ -822,6 +857,8 @@ std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInte
       // check is vtpc index exists in wiremin unordered_map
       if (mToI.wiremin.at(plane).find(vtpc) == mToI.wiremin.at(plane).end()) continue;
 
+//std::cout << t << "vtpc " << vtpc << std::endl;
+
       // I check that the voltpc index also exists in wiremax map
       if (mToI.wiremax.at(plane).find(vtpc) == mToI.wiremax.at(plane).end()) throw cet::exception("SignalShapeAna") << "found a voltpc in wiremin map but not in wiremax map" << std::endl; 
 
@@ -830,10 +867,14 @@ std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInte
 
       // eff_wmin and eff_wmax are the index of Wires in recob::Wire object
       // A correction regarding the plane ID and voltpc ID must be made
-      // for instance, in coldbox v1,  induction 2 Wires ranges in [| 384 ; 1023 |]
+      // for instance, in coldbox v1,  induction 2 Wires range in [| 384 ; 1023 |]
       // Thus there are 640 Wires, 320 in each voltpc. 
       // [| 384 ; 703 |] for voltpc 0 and [| 704 ; 1023 |] for voltpc 2 (top electronics)
-      // for the moment corrections applied are only valid for coldbox CRP1
+
+//std::cout << t << "wires in [ " << eff_wmin << " ; " << eff_wmax << " ]" << std::endl;
+
+if (strGDML.find("vdcb1") != strGDML.npos)
+{
       if (vtpc == 0 || vtpc == 1)
          {
          if (plane == 1) {eff_wmin += 384; eff_wmax += 384;}
@@ -845,14 +886,38 @@ std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInte
          if (plane == 1) {eff_wmin += 384 + 320; eff_wmax += 384 + 320;}
          if (plane == 2) {eff_wmin += 1024 + 288; eff_wmax += 1024 + 288;}
          }
-
       // check that effective wireIDs are not out of range, which for CRP1 coldbox is [0; 1599]
       if (eff_wmin < 0 || eff_wmin > 1599) throw::cet::exception("SignalShapeAna") << "effective wiremin index is out of range ! value = " << eff_wmin << std::endl;
       if (eff_wmax < 0 || eff_wmax > 1599) throw::cet::exception("SignalShapeAna") << "effective wiremax index is out of range ! value = " << eff_wmax << std::endl;
+}
+else if (strGDML.find("crpcb2") != strGDML.npos)
+{
+	size_t shift = 0;
+	if (plane==0 && vtpc==0) shift = 0;  
+	if (plane==0 && vtpc==1) shift = 189;
+	if (plane==0 && vtpc==2) shift = 476;
+	if (plane==0 && vtpc==3) shift = 666;
+	if (plane==1 && vtpc==0) shift = 952;
+	if (plane==1 && vtpc==1) shift = 1142;
+	if (plane==1 && vtpc==2) shift = 1428;
+	if (plane==1 && vtpc==3) shift = 1617;
+	if (plane==2 && vtpc==0) shift = 1904;
+	if (plane==2 && vtpc==1) shift = 2196;
+	if (plane==2 && vtpc==2) shift = 2488;
+	if (plane==2 && vtpc==3) shift = 2780;
+
+	eff_wmin += shift; eff_wmax += shift;
+	// wire indexes should not exceed 3071, the max wire index for this geometry
+	if (eff_wmin > 3071) throw::cet::exception("SignalShapeAna") << "min wire index exceeds maximal possible values (3071) : " << eff_wmin << std::endl;;
+	if (eff_wmax > 3071) throw::cet::exception("SignalShapeAna") << "max wire index exceeds maximal possible values (3071) : " << eff_wmax << std::endl;;
+} // end if geometry = vertical drift crp2&3
+
+// std::cout << t << "corrected wires in [ " << eff_wmin << " ; " << eff_wmax << " ]" << std::endl;
 
       // Start loop from effective wiremin to effective wiremax (both included)
       for (size_t iw = eff_wmin; iw <= eff_wmax; iw++)
         {
+//	std::cout << "Flag:: " << "looking at wire " << iw << std::endl;
         StoreWireRegionOfInterestAsHistogram(mToI, vtpc, mWires.at(iw), arrayvecCenteredWaveforms.at(plane), dir);
         } // end loop over wires
       } // end for over map wiremin elements which are of type map({voltpc, min wire index})
@@ -866,7 +931,7 @@ std::array<std::vector<TH1F*>, 3> SignalShapeAna::StoreWireRegionsOfTracksOfInte
 // --------------------------------------------------------------------------------------------------------------------------
 
 
-void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mToI, size_t voltpc, recob::Wire mWire, std::vector<TH1F*>& _vecCenteredWaveforms, art::TFileDirectory dir)
+void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mToI, size_t voltpc, recob::Wire mWire, std::vector<std::tuple<TH1F*, bool> >& _vecCenteredWaveforms, art::TFileDirectory dir)
   {
 
   size_t tmin = (size_t) mToI.tickmin;
@@ -896,25 +961,80 @@ void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mT
        h->SetBinContent(i, signal[ii]);
        }
 
-    // add an histogram for which the waveform is centered around the max
+
+    size_t mDescendWindow, mRiseWindow = 0; // define the tick window dimension the referent bin
+    // define the time window for centered histograms
+    if (mWire.View()==0 || mWire.View()==1)
+      {
+      mDescendWindow = 75;
+      mRiseWindow = 50;
+      }
+    else if (mWire.View()==2)
+      {
+      mDescendWindow = 75;
+      mRiseWindow = 50;
+      }
+
+    // add an histogram for which the waveform is centered around the refbin
     // caution with the number of bins to include
-    int Nbins_centered = mDescendWindowSize + mRiseWindowSize + 1; // default case when the window is large enough to contain entirely the centered signal
-    int refbin = h->GetMaximumBin(); // work to do
+    int Nbins_centered = mDescendWindow + mRiseWindow + 1; // default case when the window is large enough to contain entirely the centered signal
+ 
+    // ref bin is the max if the waveform is from collection plane
+    // if from induction plane, use 0 between min and max
+//    int refbin = h->GetMaximumBin(); // work to do
+//    int refbin = FindRefBin(mToI);
+    int refbin = -1;
+    if (mWire.View() == 2) refbin = h->GetMaximumBin();
+    else {
+      int maxbin = h->GetMaximumBin();
+      int minbin = h->GetMinimumBin();
+      refbin = maxbin;
+      for (int k=maxbin; k<minbin; k++) 
+        {
+        if ( (h->GetBinContent(k) < h->GetBinContent(refbin)) && h->GetBinContent(k) > 0) refbin = k;
+        if (h->GetBinContent(k) < 0) break;
+        }
+    }
 
     name += "_centered";
     TH1F * hCentered = dir.make<TH1F>(name.c_str(), "Centered wire signal;tick", Nbins_centered, -0.5, Nbins_centered - 0.5);
-    // keep track of this histogram
-    _vecCenteredWaveforms.push_back(hCentered);
 
-    // fill the histogram centered on the maximum
+    // fill the histogram centered on the reference bin
     for (int k = 1; k <= hCentered->GetNbinsX(); k++)
       {
-      int effbin = refbin - mRiseWindowSize + k - 1;
+      int effbin = refbin - mRiseWindow + k - 1;
       // test whether the effective bin does fall in the range [1; Nbins]
       if (effbin < 1 || effbin > h->GetNbinsX()) hCentered->SetBinContent(k, 0.);
       else hCentered->SetBinContent(k, h->GetBinContent(effbin));
       }
 
+  // check waveform quality  at the individual level
+  bool flag = true;
+  if (mWire.View() == 2) 
+	{
+	flag = FlagCollectionWaveform(*h, refbin);
+//	std::string strout = "rejected";
+//	if (flag) strout = "accepted";
+//	std::cout << "Flag:: waveform flagged as " << strout << std::endl;
+	}
+  else if (mWire.View() == 1 || mWire.View() == 0)
+	{
+	flag = FlagInductionWaveform(*h, refbin);
+//	std::string strout = "rejected";
+//	if (flag) strout = "accepted";
+//	std::cout << "Flag:: waveform flagged as " << strout << std::endl;
+	}
+
+    // update the name of the waveform depending on its flag
+    std::string str = (std::string) hCentered->GetName();
+    if (flag) str += "_thumbUP";
+    else str += "_thumbDOWN";
+    hCentered->SetName(str.c_str());
+
+    // keep track of this histogram
+    _vecCenteredWaveforms.push_back(std::make_tuple(hCentered, flag));
+
+   
 
   return;
   } // endmethod StoreWireRegionOfInterestAsHistogram
@@ -925,9 +1045,8 @@ void SignalShapeAna::StoreWireRegionOfInterestAsHistogram(track_of_interest & mT
 
 
 // note : the method assumes that all individual waveforms have the same binning convention
-void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, std::array<std::vector<TH1F*>, 3> vecCenteredWaveforms, std::string mainwritedir)
+void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, std::array<std::vector<std::tuple<TH1F*, bool> >, 3> vecCenteredWaveforms, std::string mainwritedir)
   {
-
 
   // loop over plane views
   for (size_t plane = 0; plane < 3; plane++)
@@ -949,9 +1068,9 @@ void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, 
     art::TFileDirectory dir = tfs->mkdir(strdir.c_str());
 */
     // init coherent addition histogram
-    size_t nbins = vecCenteredWaveforms.at(plane)[0]->GetNbinsX();
-    double xlow = vecCenteredWaveforms.at(plane)[0]->GetBinLowEdge(1);
-    double xup = vecCenteredWaveforms.at(plane)[0]->GetBinLowEdge(nbins) + vecCenteredWaveforms.at(plane)[0]->GetBinWidth(nbins);;
+    size_t nbins = std::get<0>(vecCenteredWaveforms.at(plane)[0])->GetNbinsX();
+    double xlow = std::get<0>(vecCenteredWaveforms.at(plane)[0])->GetBinLowEdge(1);
+    double xup = std::get<0>(vecCenteredWaveforms.at(plane)[0])->GetBinLowEdge(nbins) + std::get<0>(vecCenteredWaveforms.at(plane)[0])->GetBinWidth(nbins);;
   
     // name of histogram
     // first get approx value of angles theta and phi that will go into the name
@@ -961,32 +1080,43 @@ void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, 
     else approxtheta = static_cast<int>(mToI.theta+0.5);
     if (mToI.phi < 0) approxphi = static_cast<int>(mToI.phi-0.5);
     else approxphi = static_cast<int>(mToI.phi+0.5);
+    // coherent sum without the individual waveform quality cut
     std::string name = "CoherentAddition_theta_" + std::to_string(approxtheta) + "_phi_" + std::to_string(approxphi);
     TH1D * hCoherent = dir.make<TH1D>(name.c_str(), "Signal coherently added", nbins, xlow, xup);
-
+    // coherent sum with the individual waveform quality cut
+    std::string name2 = "CoherentAdditionWithQualityCut_theta_" + std::to_string(approxtheta) + "_phi_" + std::to_string(approxphi);
+    TH1D * hCoherent_qualcut = dir.make<TH1D>(name2.c_str(), "Signal coherently added", nbins, xlow, xup);
 
     if (fVerbose) std::cout << "will add coherently " << vecCenteredWaveforms.at(plane).size() << " waveforms on plane " << plane << "." << std::endl;
 
-
-
     std::vector<float> content(nbins, 0.);
+    std::vector<float> content_qualcut(nbins, 0.);
 
     // start loop over centered waveforms
-    int n = vecCenteredWaveforms.at(plane)[0]->GetNbinsX();
-    int refbin = vecCenteredWaveforms.at(plane)[0]->GetMaximumBin(); // work to do
+    int n = std::get<0>(vecCenteredWaveforms.at(plane)[0])->GetNbinsX();
+//    int refbin = vecCenteredWaveforms.at(plane)[0]->GetMaximumBin(); // #work to do
     for (size_t i = 0; i < vecCenteredWaveforms.at(plane).size(); i++)
        {
        // check that all waveforms have the same number of bins
-       if (vecCenteredWaveforms.at(plane)[i]->GetNbinsX() != n) throw cet::exception("SignalShapeAna") << "Waveform histogram must have the same number of bins to be coherently added." << std::endl;
-       // check that all waveforms are centered the same way
-       if (vecCenteredWaveforms.at(plane)[i]->GetMaximumBin() != refbin) throw cet::exception("SignalShapeAna") << "Waveform histograms must be centered the same way." << std::endl;
+       if (std::get<0>(vecCenteredWaveforms.at(plane)[i])->GetNbinsX() != n) throw cet::exception("SignalShapeAna") << "Waveform histogram must have the same number of bins to be coherently added." << std::endl;
+
        // retrieve content of waveform and add it to vector of size nbin
-       for (int k = 0; k < vecCenteredWaveforms.at(plane)[i]->GetNbinsX(); k++) content[k] += vecCenteredWaveforms.at(plane)[i]->GetBinContent(k+1);
+       for (int k = 0; k < std::get<0>(vecCenteredWaveforms.at(plane)[i])->GetNbinsX(); k++)
+          {
+          TH1F * h = std::get<0>(vecCenteredWaveforms.at(plane)[i]);
+          bool flag = std::get<1>(vecCenteredWaveforms.at(plane)[i]);
+          content[k] += h->GetBinContent(k+1);
+          if (flag) content_qualcut[k] += h->GetBinContent(k+1);
+          }
+
        } // end for over waveform histograms vector
 
     // Finally fill the histogram of coherent addition
-    for (int k = 1; k <= hCoherent->GetNbinsX(); k++) hCoherent->SetBinContent(k, content[k-1]);
-
+    for (int k = 1; k <= hCoherent->GetNbinsX(); k++) 
+       {
+       hCoherent->SetBinContent(k, content[k-1]);
+       hCoherent_qualcut->SetBinContent(k, content_qualcut[k-1]);
+       }
 // check
 //std::cout << "adding together " << vecCenteredWaveforms.at(plane).size() << " waveforms." << std::endl; 
 //for (unsigned size_t k = 0; k <  content.size(); k++) std::cout << k << "\t" << content[k] << std::endl;
@@ -999,14 +1129,168 @@ void SignalShapeAna::PerformCoherentAdditionOfWaveforms(track_of_interest mToI, 
 
 // --------------------------------------------------------------------------------------------------------------------------
 
+// argument is a vector of std::tuple<float, float> : mean ADC values & derivative
 
+bool SignalShapeAna::IsMonotonous( std::vector<std::tuple<float, float> > meanDev)
+    {
+    size_t th = 5;
+
+    // if I found more than th positive values in a raw for the derivative, return false
+    // as weel as mean ADC values greater than 10 ADC
+    size_t inaraw = 0;
+    for (auto & t : meanDev)
+      {
+      if (inaraw > th) return false;
+//      if (std::get<1>(t) > 0. && std::get<0>(t) > 10.) inaraw++;
+      if (std::get<1>(t) > 6.) inaraw++;
+      else inaraw = 0;
+      } // end for
+
+    return true;
+
+    } // end func
+
+// --------------------------------------------------------------------------------------------------------------------------
+
+bool SignalShapeAna::FlagCollectionWaveform(TH1F& hSig, int refbin)
+  {
+
+  
+  // check from refbin to maxbin that the waveform is mostly descending
+  int window = 5; // size of the smoothing & moving window to calculate the derivative
+
+
+  // signal right and left with resect to reference bin  
+  std::vector<std::tuple<float, float> > signal_right; // tuple<ADC value ; derivative at + window -1> 
+  std::vector<std::tuple<float, float> > signal_left; // tuple<ADC value ; derivative at + window -1> 
+
+  // fill right tuples with signal
+  for (int i = refbin; i<=hSig.GetNbinsX(); i++){
+    int ii = i+window-1;
+    // the window size must not exceed the maxbin
+    if ( ii > hSig.GetNbinsX()) break;
+    // calculate mean ADC vae with sliding window
+    float localmean = 0.;
+    for (int j=i; j<=ii; j++) localmean += hSig.GetBinContent(j);
+    localmean /= (float) window;
+
+    double y1 = hSig.GetBinContent(i);
+    double y2 = hSig.GetBinContent(ii);
+    signal_right.push_back(std::make_tuple(localmean, y2-y1) );
+    } // end for
+
+
+  // fill left tuples with signal
+  for (int i=refbin; i>=1; i--){
+    int ii = i-window+1;
+    // the window size must not exceed the maxbin
+    if ( ii < 1) break;
+    float localmean = 0.;
+    for (int j=i; j>=ii; j--) localmean += hSig.GetBinContent(j);
+    localmean /= (float) window;
+
+    double y1 = hSig.GetBinContent(i);
+    double y2 = hSig.GetBinContent(ii);
+    signal_left.push_back(std::make_tuple(localmean, y2-y1) );
+    } // end for
+
+  // Check monotony of signal at right and left of the reference bin
+  bool isMonotonous_right = IsMonotonous(signal_right);
+  bool isMonotonous_left = IsMonotonous(signal_left);
+
+
+//std::cout << "Flag:: 2nd monotonous status (right ; left) : ( " << isMonotonous_right << " ; " << isMonotonous_left << " )" << std::endl;
+
+  if (isMonotonous_right && isMonotonous_left) return true;
+  return false;
+  }
+
+
+// --------------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------------
+
+// This a small handmade function that assumes the input hist is ascending and then descending.
+// After this the hist can do anything, and I ask the function to return the first max (local max) of the hist
+// which may not be the global max
+int GetLocalMax(TH1F& h)
+{
+int maxbin = 1;
+int c = 0;
+for (int k=1; k<=h.GetMaximumBin(); k++)
+  {
+  if (c > 10) break;
+  if (h.GetBinContent(k) > h.GetBinContent(maxbin)) maxbin = k;
+  if (h.GetBinContent(k) < h.GetBinContent(maxbin)) c++;
+  }
+return maxbin;
+}
+
+
+// --------------------------------------------------------------------------------------------------------------------------
+// Purpose of the function :
+// -- after reference bin, signal must be 'collection like', i.e not secondary peaks
+//-- in vd coldbow it was observed that sometime induction signal is 'collection like' only, reject these waveforms
+// Basically I split the induction signal in 2 at the 0-crossing bin, and check that both side of signal are collection like
+
+bool  SignalShapeAna::FlagInductionWaveform(TH1F& h, int refbin)
+{
+
+// first check signal is not collection like
+//bool isCollLike = false;
+bool isMax = true; bool isMin = true;
+if ( h.GetBinContent(h.GetMaximumBin()) < fIndSignalTh ) isMax = false;
+if ( h.GetBinContent(h.GetMinimumBin()) > -fIndSignalTh ) isMin = false;
+
+if (!isMax && !isMin){ std::cout << "Flag:: No signal found" << std::endl; return false;}
+if (!isMax || !isMin) {std::cout << "Flag:: Signal is coll-like" << std::endl; return false;}
+
+
+// make histograms for signal left and right to refbin
+
+// signal to the right
+int nbins_right = h.GetNbinsX() - refbin + 1;
+TH1F * hRight = new TH1F("right", "right", nbins_right, -0.5, (float) nbins_right - 0.5);
+
+// signal to the left
+int nbins_left = refbin;
+TH1F * hLeft = new TH1F("left", "left", nbins_left, -0.5, (float) nbins_left - 0.5);
+
+// fill new histograms
+for (int i=1; i<=h.GetNbinsX(); i++)
+    {
+    if (i <= refbin) hLeft->SetBinContent(refbin-i+1, h.GetBinContent(i));
+    if (i >= refbin) hRight->SetBinContent(i-refbin+1, -h.GetBinContent(i));
+    }
+
+//bool leftFlag = FlagCollectionWaveform(*hLeft, hLeft->GetMaximumBin());
+//bool rightFlag = FlagCollectionWaveform(*hRight, hRight->GetMaximumBin());
+
+bool leftFlag = FlagCollectionWaveform(*hLeft, GetLocalMax(*hLeft));
+bool rightFlag = FlagCollectionWaveform(*hRight, GetLocalMax(*hRight));
+
+//std::cout << "flag results (left ; right) = ( " << leftFlag << " ; " << rightFlag << " )" << std::endl;
+
+if (!leftFlag || !rightFlag) return false;
+return true;
+
+}
 
   // This macro has to be defined for this module to be invoked from a
   // .fcl file; see HitEfficiencyAna.fcl for more information.
   DEFINE_ART_MODULE(SignalShapeAna)
 
 
+
+
+
 } // namespace SignalShapeAna
+
+
+
+
+
+
 #endif // HitEfficiencyAna_module
 
 

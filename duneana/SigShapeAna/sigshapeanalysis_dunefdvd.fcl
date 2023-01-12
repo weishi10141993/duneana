@@ -1,6 +1,5 @@
 #include "services_dune.fcl"
 #include "services_vdcoldbox.fcl"
-#include "param_sigshapeana_dunefdvd.fcl"
 
 process_name: SignalShapeAna
 
@@ -8,7 +7,8 @@ services:
 {
   TFileService: { fileName: "SignalShapeAna.root" }
   FileCatalogMetadata:  @local::art_file_catalog_mc
-                        @table::vdcb_services            # services_vdcoldbox.fcl
+#                        @table::vdcb_services            # services_vdcoldbox.fcl
+                        @table::vdcb_crp2_services            # services_vdcoldbox.fcl
 }
 
 
@@ -28,6 +28,7 @@ coldbox_SignalShapeAnalysis:
   WireLabel:		"caldata:dataprep"	# label associated to recob::Wire objects
   TrackMinExtension:	15			# length in cm tracks must have to be considered in the analysis (allow removing noise tracks)
   ThetaRange:		[60, 120]		# [deg] theta_min and theta_max (from spherical coordinate using X as vertical axis). Tracks are kept if theta_min < theta < theta_max
+  InductionSignalThreshold: 20 			# threshold in ADC units induction signals must pass
 }
 
 physics:
