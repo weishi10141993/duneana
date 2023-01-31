@@ -1,7 +1,8 @@
 #include "TaggedHitDump.fcl"
 #include "AbsRunningSum.fcl"
-##include "StandardHF.fcl # <-- here if want to use standard HF
+#include "StartEndDump.fcl"
 
+##include "StandardHF.fcl # <-- here if want to use standard HF
 BEGIN_PROLOG
 trigprim_ana: {
    @table::taggedprimdump_ana
@@ -49,12 +50,12 @@ physics: {
       # sure to add each one to the "ana" list below
 
       anatrigprim:    @local::trigprim_ana
-     
+      startenddump: @local::startenddump    
    }
 
    simulate: [rns, trigprim]
 
-   ana     : [anatrigprim]
+   ana     : [anatrigprim, startenddump]
    
    trigger_paths: [ simulate ] 
    end_paths: [ ana ] 
