@@ -1,14 +1,19 @@
 include_directories ( $ENV{GENIE_INC}/GENIE )
 
-# nusystematics
-##cet_find_library( SYSTTOOLS NAMES systematicstools_interface systematicstools_interpreters systematicstools_utility PATHS ENV SYSTEMATICSTOOLS_LIB NO_DEFAULT_PATH )
+find_package(PythonLibs REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+
+find_package(Eigen3 REQUIRED)
+
+add_library(geoEff SHARED IMPORTED)
+set_target_properties(geoEff PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/DUNE_ND_GeoEff/lib/libgeoEff.so)
 
 cet_build_plugin(CAFMaker   art::module
                         duneanaobj_StandardRecord
                         duneanaobj_StandardRecordFlat
                         nugen::NuReweight
                         nugen::NuReweight_art
-			nusimdata::SimulationBase
+                        nusimdata::SimulationBase
                         ART_FRAMEWORK_CORE
                         ART_FRAMEWORK_PRINCIPAL
                         ART_FRAMEWORK_SERVICES_REGISTRY
@@ -21,12 +26,15 @@ cet_build_plugin(CAFMaker   art::module
                         messagefacility::MF_MessageLogger
                         cetlib::cetlib cetlib_except
                         ROOT_BASIC_LIB_LIST
-			${GENIE_LIB_LIST}
+                        ${GENIE_LIB_LIST}
+                        ${PYTHON_LIBRARIES}
+                        Eigen3::Eigen
+                        geoEff
                         systematicstools::interface
-			systematicstools::interpreters
-			systematicstools::utility
+                        systematicstools::interpreters
+                        systematicstools::utility
                         dunereco::CVN_func
-              BASENAME_ONLY
+                        BASENAME_ONLY
 )
 
 install_headers()

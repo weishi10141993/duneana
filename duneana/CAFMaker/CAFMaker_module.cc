@@ -10,6 +10,11 @@
 #ifndef CAFMaker_H
 #define CAFMaker_H
 
+
+// Library methods
+// this needs to come first before std headers to avoid _POSIX_C_SOURCE redefition error
+#include "DUNE_ND_GeoEff/include/geoEff.h"
+
 // Generic C++ includes
 #include <iostream>
 
@@ -472,6 +477,19 @@ namespace caf {
         }
       }
     } // loop through MC truth i
+
+    // Here starts to add PRISM GEC input
+    //
+    // Initialize geometric efficiency module
+    //
+    geoEff * eff = new geoEff(314, true); // set verbose to true for debug
+    eff->setNthrows(4096);
+    // Rotate w.r.t. neutrino direction, rather than fixed beam direction
+    eff->setUseFixedBeamDir(false);
+    // 30 cm veto
+    eff->setVetoSizes(vector<float>(1, 30.));
+    // 30 MeV
+    eff->setVetoEnergyThresholds(vector<float>(1, 30.));
 
     if(fTree){
       fTree->Fill();
