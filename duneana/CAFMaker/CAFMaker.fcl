@@ -9,7 +9,7 @@ dunefd_cafmaker:
     module_type:             "CAFMaker"
 
     CreateCAF: true
-    CreateFlatCAF: true
+    CreateFlatCAF: false
 
     MVASelectLabel:          "mvaselect"
 
